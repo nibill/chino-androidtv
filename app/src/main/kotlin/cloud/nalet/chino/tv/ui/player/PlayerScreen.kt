@@ -304,8 +304,9 @@ private fun ExoPlayback(
         // /v1/items/{id}/subtitles, then the text streams of the original
         // file /play/info lists, each at the WebVTT chino-stream extracts of
         // it. The MIME type picks the decoder (PGS and the other picture
-        // formats their own); the language is all a picture subtitle says of
-        // itself. The menu knows each by its id ("side:…", "emb:…"). FORCED
+        // formats their own: a .sup file's is SupParser, SupSubtitles.kt);
+        // the language is all a picture subtitle says of itself. The menu
+        // knows each by its id ("side:…", "emb:…"). FORCED
         // and the deaf and hard of hearing as chino-api, the file or the
         // name say: the subtitle rule reads them, Media3 is told to ignore
         // them. A file's default flag is not passed on: it counts for nothing.
@@ -360,8 +361,10 @@ private fun ExoPlayback(
         // playback starts (experimentalParseSubtitlesDuringExtraction off;
         // the text renderer decodes them, StreamRenderersFactory), so a file
         // with forty subtitle streams costs chino-stream one extraction, the
-        // one watched. Where the TV's output is stereo
-        // a 5.1 default hands the DEFAULT to its stereo twin
+        // one watched. Were a subtitle parsed as it loads (that switch on),
+        // it would have the parsers the text renderer decodes with
+        // (SubtitleParsers: a .sup file's PGS too). Where the TV's output
+        // is stereo a 5.1 default hands the DEFAULT to its stereo twin
         // (withStereoDefault): the player starts on the stereo track, the 5.1
         // one is in the audio menu.
         val sidecars = ready.sidecarSubtitles
@@ -372,6 +375,7 @@ private fun ExoPlayback(
         val mediaSourceFactory =
             androidx.media3.exoplayer.source.DefaultMediaSourceFactory(playDataSourceFactory)
                 .setLoadErrorHandlingPolicy(retryPolicy)
+                .setSubtitleParserFactory(SubtitleParsers())
                 .experimentalParseSubtitlesDuringExtraction(false)
         // A packaged ladder starts on its first variant, the one
         // chino-stream warmed when the master was fetched (streamPlayerBuilder).

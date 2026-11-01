@@ -185,6 +185,37 @@ class SubtitleStyleTest {
         assertNull(both[1].bitmap)
     }
 
+    /** A PGS picture as Media3's PgsParser places it on its plane. */
+    private fun pgs(width: Int, height: Int, x: Int, y: Int, planeWidth: Int = 1920, planeHeight: Int = 1080) = Cue.Builder()
+        .setBitmap(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
+        .setPosition(x.toFloat() / planeWidth)
+        .setPositionAnchor(Cue.ANCHOR_TYPE_START)
+        .setLine(y.toFloat() / planeHeight, Cue.LINE_TYPE_FRACTION)
+        .setLineAnchor(Cue.ANCHOR_TYPE_START)
+        .setSize(width.toFloat() / planeWidth)
+        .setBitmapHeight(height.toFloat() / planeHeight)
+        .build()
+
+    @Test
+    fun `a picture on an HD plane keeps its own shape and its place, one on another plane is drawn as it comes`() {
+        // At the bottom: hung from its bottom edge, as high as its width makes it.
+        val bottom = layOutCues(listOf(pgs(400, 40, 760, 900))).single()
+        assertEquals(Cue.DIMEN_UNSET, bottom.bitmapHeight, 0f)
+        assertEquals(940f / 1080f, bottom.line, 1e-6f)
+        assertEquals(Cue.ANCHOR_TYPE_END, bottom.lineAnchor)
+        assertEquals(760f / 1920f, bottom.position, 1e-6f)
+        assertEquals(400f / 1920f, bottom.size, 1e-6f)
+        // At the top: from its top edge.
+        val top = layOutCues(listOf(pgs(200, 30, 100, 60), text("Hello")))
+        assertEquals(Cue.DIMEN_UNSET, top[0].bitmapHeight, 0f)
+        assertEquals(60f / 1080f, top[0].line, 1e-6f)
+        assertEquals(Cue.ANCHOR_TYPE_START, top[0].lineAnchor)
+        assertNull(top[1].bitmap)
+        // A DVD's or a broadcast's plane (720x576), whose pixels are not square.
+        val sd = pgs(300, 40, 210, 500, planeWidth = 720, planeHeight = 576)
+        assertSame(sd, layOutCues(listOf(sd)).single())
+    }
+
     @Test
     fun `the bottom margin clears the safe area wherever the picture ends`() {
         val safe = 27f * 2 // 27 dp on a 1080p TV at density 2

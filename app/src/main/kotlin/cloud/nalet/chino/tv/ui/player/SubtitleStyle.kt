@@ -192,11 +192,12 @@ private fun roomBesideMenu(pictureLeft: Int, pictureHeight: Int, menuLeft: Float
  * and its text sizes go, and of its styles only italics and the language's
  * own spans stay ([keepItalicsAndRuby]); a ruby reading is drawn above its
  * characters. Picture cues (PGS) keep their own place: a picture cannot be
- * re-flowed.
+ * re-flowed. They keep their own shape too ([inItsShape]).
  */
 fun layOutCues(cues: List<Cue>): List<Cue> {
+    val pictures = cues.filter { it.bitmap != null }.map(::inItsShape)
     val texts = cues.filter { it.bitmap == null && !it.text.isNullOrBlank() }
-    if (texts.isEmpty()) return cues.filter { it.bitmap != null }
+    if (texts.isEmpty()) return pictures
     val text = SpannableStringBuilder()
     texts.withIndex()
         .sortedWith(compareBy<IndexedValue<Cue>> { heightOnScreen(it.value) }.thenBy { it.index })
@@ -212,7 +213,39 @@ fun layOutCues(cues: List<Cue>): List<Cue> {
         .setPositionAnchor(Cue.ANCHOR_TYPE_MIDDLE)
         .setSize(SubtitleLook.LINE_WIDTH_FRACTION)
         .build()
-    return cues.filter { it.bitmap != null } + subtitle
+    return pictures + subtitle
+}
+
+/** How far from 16:9 a picture subtitle's plane may be and still be in an HD
+ *  picture's shape. */
+private const val HD_PLANE_TOLERANCE = 0.02f
+
+/**
+ * A picture subtitle (PGS) in its own shape. Media3 draws a picture over a
+ * share of the view's width and a share of its height, the shares of the
+ * plane it was made on - stretched wherever the box it is drawn in is of
+ * another shape than that plane: a film cropped to 2.39:1 that kept its
+ * Blu-ray's subtitles, made on a 16:9 plane, gets them squashed, and so does
+ * every picture while the line moves left of an open menu ([SubtitlePlacement]
+ * narrows the box). A plane in an HD picture's shape (16:9, square pixels)
+ * keeps the picture's own shape instead: as wide as Media3 draws it, as high
+ * as that makes it, and one in the lower half of its plane hangs from its
+ * bottom edge there, so the frame never cuts it off. Where the box is of the
+ * plane's shape this is exactly Media3's drawing. A plane of another shape
+ * (a DVD's or a broadcast's, whose pixels are not square) is drawn as Media3
+ * draws it.
+ */
+fun inItsShape(cue: Cue): Cue {
+    val bitmap = cue.bitmap ?: return cue
+    if (cue.size <= 0f || cue.bitmapHeight <= 0f || bitmap.width <= 0 || bitmap.height <= 0) return cue
+    if (cue.lineType != Cue.LINE_TYPE_FRACTION || cue.lineAnchor != Cue.ANCHOR_TYPE_START || cue.line == Cue.DIMEN_UNSET) return cue
+    val plane = (bitmap.width / cue.size) / (bitmap.height / cue.bitmapHeight)
+    if (kotlin.math.abs(plane - 16f / 9f) > 16f / 9f * HD_PLANE_TOLERANCE) return cue
+    val shaped = cue.buildUpon().setBitmapHeight(Cue.DIMEN_UNSET)
+    if (cue.line + cue.bitmapHeight / 2f > 0.5f) {
+        shaped.setLine(cue.line + cue.bitmapHeight, Cue.LINE_TYPE_FRACTION).setLineAnchor(Cue.ANCHOR_TYPE_END)
+    }
+    return shaped.build()
 }
 
 /**
@@ -303,7 +336,9 @@ class LaidOutCues(private val output: TextOutput) : TextOutput {
  * laid out by [layOutCues]. It decodes the side-loaded subtitles as they
  * come (legacy decoding): Media3 fetches a side-loaded subtitle only once it
  * is on when it decodes it here, rather than parsing every one as the
- * playback starts.
+ * playback starts. Its decoders are Media3's, but for PGS: a .sup sidecar is
+ * read by SupParser, its display sets drawn as each is shown
+ * ([SubtitleDecoders], SupSubtitles.kt).
  */
 class StreamRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
     override fun buildTextRenderers(
@@ -313,7 +348,7 @@ class StreamRenderersFactory(context: Context) : DefaultRenderersFactory(context
         extensionRendererMode: Int,
         out: ArrayList<Renderer>,
     ) {
-        out += TextRenderer(LaidOutCues(output), outputLooper).apply { experimentalSetLegacyDecodingEnabled(true) }
+        out += TextRenderer(LaidOutCues(output), outputLooper, SubtitleDecoders()).apply { experimentalSetLegacyDecodingEnabled(true) }
     }
 }
 

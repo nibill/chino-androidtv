@@ -83,6 +83,24 @@ class SubtitleChoicesTest {
     }
 
     @Test
+    fun `a sidecar is forced where the server says so, or its label in the words a menu reads`() {
+        // From a server that sends no flag: the label, "foreign parts only" too.
+        val unflagged = sideLoadedSubtitles(
+            listOf(
+                SidecarSubtitle(id = "a", lang = "eng", label = "English", url = "u", format = "pgs"),
+                SidecarSubtitle(id = "b", lang = "eng", label = "English (foreign parts only)", url = "u", format = "pgs"),
+                SidecarSubtitle(id = "c", lang = "ger", label = "German (Forced)", url = "u", format = "srt"),
+            ),
+            emptyList(),
+        ) { "u$it" }
+        assertEquals(listOf(false, true, true), unflagged.map { it.forced })
+        // A track Media3 lists with such a label and no flag is forced in the menu.
+        val entry = subtitleEntry(SubtitleTrackInfo("side:b", "eng", "English (foreign parts only)", image = true))
+        assertTrue(entry.forced)
+        assertEquals("English · foreign-language parts only", entry.label)
+    }
+
+    @Test
     fun `the menu id of a side-loaded track, under the prefix a merged source gives it`() {
         assertEquals("emb:4", sideLoadedId("emb:4"))
         assertEquals("emb:4", sideLoadedId("3:emb:4"))
