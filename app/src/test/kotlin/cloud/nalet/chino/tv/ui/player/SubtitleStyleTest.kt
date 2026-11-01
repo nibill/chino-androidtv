@@ -217,6 +217,29 @@ class SubtitleStyleTest {
     }
 
     @Test
+    fun `a picture across the middle hangs from its bottom edge where most of it is below the middle`() {
+        // From 450 to 650 of 1080: its centre below the middle.
+        val across = layOutCues(listOf(pgs(400, 200, 760, 450))).single()
+        assertEquals(Cue.ANCHOR_TYPE_END, across.lineAnchor)
+        assertEquals(650f / 1080f, across.line, 1e-6f)
+        // From 420 to 620: its centre above it.
+        val above = layOutCues(listOf(pgs(400, 200, 760, 420))).single()
+        assertEquals(Cue.ANCHOR_TYPE_START, above.lineAnchor)
+        assertEquals(420f / 1080f, above.line, 1e-6f)
+    }
+
+    @Test
+    fun `a picture's bottom edge is where Media3 draws it, a text cue has none`() {
+        // As PgsParser places it, on the plane's shape: 940 of 1080.
+        assertEquals(940f, pictureBottom(pgs(400, 40, 760, 900), 1920, 1080)!!, 0.01f)
+        // In its own shape on a 1920 x 800 picture: hung from 940 / 1080 of it.
+        assertEquals(940f / 1080f * 800f, pictureBottom(layOutCues(listOf(pgs(400, 40, 760, 900))).single(), 1920, 800)!!, 0.01f)
+        // At the top, from its top edge, as high as its width makes it.
+        assertEquals(60f / 1080f * 800f + 30f, pictureBottom(layOutCues(listOf(pgs(200, 30, 100, 60))).single(), 1920, 800)!!, 0.01f)
+        assertNull(pictureBottom(text("Hello"), 1920, 1080))
+    }
+
+    @Test
     fun `the bottom margin clears the safe area wherever the picture ends`() {
         val safe = 27f * 2 // 27 dp on a 1080p TV at density 2
         // A 16:9 picture filling the screen: Media3's 8 % (86 px) clears 54 px.

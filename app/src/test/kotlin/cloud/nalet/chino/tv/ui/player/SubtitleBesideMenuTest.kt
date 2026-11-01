@@ -146,6 +146,56 @@ class SubtitleBesideMenuTest {
         assertEquals(resting, placement.bottomFraction, 1e-6f)
     }
 
+    /** A PGS picture [width] x [height] at ([x], [y]) of a 1920x1080 plane, as the look lays it out. */
+    private fun picture(width: Int, height: Int, x: Int, y: Int) = layOutCues(
+        listOf(
+            androidx.media3.common.text.Cue.Builder()
+                .setBitmap(android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888))
+                .setPosition(x / 1920f)
+                .setPositionAnchor(androidx.media3.common.text.Cue.ANCHOR_TYPE_START)
+                .setLine(y / 1080f, androidx.media3.common.text.Cue.LINE_TYPE_FRACTION)
+                .setLineAnchor(androidx.media3.common.text.Cue.ANCHOR_TYPE_START)
+                .setSize(width / 1920f)
+                .setBitmapHeight(height / 1080f)
+                .build(),
+        ),
+    )
+
+    @Test
+    fun `above the controls the subtitle rises, a picture by its own bottom edge`() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val view = SubtitleView(context)
+        val placement = view.applySubtitleLook()
+        fun layOut() {
+            view.measure(View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, 1920, 1080)
+        }
+        layOut()
+        val resting = placement.bottomFraction
+        val gap = SubtitleLook.ABOVE_CONTROLS_DP * context.resources.displayMetrics.density
+        // The controls in, their top at 800 px: a line ends the gap above
+        // it - the view risen, its bottom margin where it rests.
+        placement.controlsTop = 800f
+        placement.lift = 1f
+        layOut()
+        assertEquals(800f - gap, 1080f - placement.bottomFraction * 1080f, 0.5f)
+        assertEquals(-(placement.bottomFraction - resting) * 1080f, view.translationY, 0.5f)
+        // A picture whose bottom edge is at 1000 px: it ends the gap above them too.
+        placement.cues = picture(400, 40, 760, 960)
+        assertEquals(-(1000f - (800f - gap)), view.translationY, 0.5f)
+        // One that ends above them: no rise.
+        placement.cues = picture(400, 40, 760, 600)
+        assertEquals(0f, view.translationY, 0.01f)
+        // Nothing on screen: as the last picture.
+        placement.cues = emptyList()
+        assertEquals(0f, view.translationY, 0.01f)
+        // The controls gone: down again.
+        placement.cues = picture(400, 40, 760, 960)
+        placement.lift = 0f
+        assertEquals(0f, view.translationY, 0.01f)
+        assertEquals(resting, placement.bottomFraction, 1e-6f)
+    }
+
     @Test
     fun `an open menu says where its corner is, and that it is gone as it closes`() {
         val corners = mutableListOf<androidx.compose.ui.geometry.Offset?>()

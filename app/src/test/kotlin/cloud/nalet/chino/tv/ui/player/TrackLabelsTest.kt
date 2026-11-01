@@ -352,6 +352,22 @@ class TrackLabelsTest {
     }
 
     @Test
+    fun `a label says forced in the words both apps read`() {
+        // The same cases as chino-mobile's SubtitleNamesTest.
+        val forced = listOf(
+            "English (Forced)", "Forced", "EnglishForced", "ForcedNarrative", "Forced Narrative", "English Forced Narrative",
+            "forced subs", "English (foreign parts only)", "Foreign only", "English (foreign only)", "Foreign-language parts",
+            "English · foreign-language parts only",
+        )
+        val notForced = listOf(
+            "English", "Reinforced", "English (Non-Forced)", "English (not forced)", "Unforced", "English (no forced)",
+            "English (incl. foreign parts)", "English (including foreign parts)", "English (with foreign parts)", "English (Foreign)",
+        )
+        for (label in forced) assertTrue(label, saysForced(label))
+        for (label in notForced) assertFalse(label, saysForced(label))
+    }
+
+    @Test
     fun wordsThatOnlyNameTheLanguageAgainGoInAnyLanguageWordsThatAddSomethingStay() = check(
         listOf(
             // The word list's name, never "German · Deutsch".

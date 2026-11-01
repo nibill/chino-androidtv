@@ -358,20 +358,73 @@ private fun viewerCaptions(context: Context): CaptioningManager? =
     (context.getSystemService(Context.CAPTIONING_SERVICE) as? CaptioningManager)?.takeIf { it.isEnabled }
 
 /**
+ * Where a picture cue's bottom edge is drawn, in pixels from the top of a box
+ * [width] x [height], as Media3's SubtitlePainter places a bitmap; null for a
+ * text cue.
+ */
+internal fun pictureBottom(cue: Cue, width: Int, height: Int): Float? {
+    val bitmap = cue.bitmap ?: return null
+    if (width <= 0 || height <= 0 || bitmap.width <= 0 || bitmap.height <= 0) return null
+    if (cue.line == Cue.DIMEN_UNSET || cue.lineType != Cue.LINE_TYPE_FRACTION || cue.size == Cue.DIMEN_UNSET) return null
+    val drawnHeight = if (cue.bitmapHeight != Cue.DIMEN_UNSET) {
+        height * cue.bitmapHeight
+    } else {
+        width * cue.size * bitmap.height / bitmap.width
+    }
+    val anchor = height * cue.line
+    return when (cue.lineAnchor) {
+        Cue.ANCHOR_TYPE_END -> anchor
+        Cue.ANCHOR_TYPE_MIDDLE -> anchor + drawnHeight / 2f
+        else -> anchor + drawnHeight
+    }
+}
+
+/**
+ * How far the subtitle must rise, in pixels, so that what it shows - [shown],
+ * the cues on screen or the last ones - ends [gap] above [edge] (window
+ * pixels): the controls' or a menu's top. A line of text ends at [textBottom]
+ * (window pixels), a picture at its own bottom edge in the box [width] x
+ * [height] whose top is at [boxTop] ([pictureBottom]). Nothing shown yet: as a
+ * line of text would.
+ */
+internal fun subtitleClearance(shown: List<Cue>, width: Int, height: Int, boxTop: Float, textBottom: Float, edge: Float, gap: Float): Float {
+    var lowest = if (shown.isEmpty() || shown.any { it.bitmap == null }) textBottom else Float.NEGATIVE_INFINITY
+    for (cue in shown) pictureBottom(cue, width, height)?.let { lowest = maxOf(lowest, boxTop + it) }
+    if (lowest == Float.NEGATIVE_INFINITY) return 0f
+    return (lowest - (edge - gap)).coerceAtLeast(0f)
+}
+
+/**
  * Where a subtitle sits: above the bottom of the picture and the safe area,
  * and above the player's controls while they show ([subtitleBottomFraction]);
  * left of a menu of the player while one is open ([subtitleEndInset]), or
  * above it where left of it is too narrow for a line ([subtitleAboveMenu]).
  * The player tells it where the controls' top edge is and how far they have
- * come in, and where an open menu's left and top edges are.
+ * come in, where an open menu's left and top edges are, and what is on
+ * screen ([cues]). Over the safe area the line rests at its bottom margin;
+ * above the controls or a menu the whole view rises - a picture subtitle
+ * (PGS), which Media3 keeps where its plane puts it, by its own bottom edge,
+ * as text does by its last line's.
  */
 class SubtitlePlacement internal constructor(private val view: SubtitleView) {
     private var bottom = SubtitleLook.BOTTOM_FRACTION
+    private var resting = SubtitleLook.BOTTOM_FRACTION
     private var end = 0
 
     /** Where the last line ends now, as a share of the picture's height
      *  above its bottom edge. */
     internal val bottomFraction: Float get() = bottom
+
+    /** The cues on screen, as laid out ([layOutCues]). While none are, the
+     *  rise goes by the last ones. */
+    var cues: List<Cue> = emptyList()
+        set(value) {
+            field = value
+            if (value.isNotEmpty()) shown = value
+            update()
+        }
+
+    private var shown: List<Cue> = emptyList()
 
     /** The left edge of the player's open menu, in window pixels; null while
      *  none is open. */
@@ -415,12 +468,18 @@ class SubtitlePlacement internal constructor(private val view: SubtitleView) {
     internal fun update() {
         val at = IntArray(2)
         view.getLocationInWindow(at)
+        // Where the view is laid out, its own rise left out: from where its
+        // parent is.
+        val viewTop = (view.parent as? View)?.let { parent ->
+            IntArray(2).also(parent::getLocationInWindow)[1] + view.top.toFloat()
+        } ?: view.top.toFloat()
         val density = view.resources.displayMetrics.density
         val gap = SubtitleLook.BESIDE_MENU_DP * density
+        val aboveControls = SubtitleLook.ABOVE_CONTROLS_DP * density
         // The line's end, clear above edge, by share of the way.
         fun above(edge: Float?, clear: Float, share: Float) = subtitleBottomFraction(
             pictureHeight = view.height,
-            pictureBottom = at[1] + view.height,
+            pictureBottom = (viewTop + view.height).toInt(),
             screenHeight = view.rootView.height,
             safeBottom = SubtitleLook.SAFE_BOTTOM_DP * density,
             controlsTop = edge,
@@ -433,15 +492,11 @@ class SubtitlePlacement internal constructor(private val view: SubtitleView) {
         // last line ends above the menu's top as above the controls' -
         // whichever is higher.
         val aboveMenu = left != null && top != null && subtitleAboveMenu(at[0], view.width, view.height, left, gap)
+        val rest = above(null, 0f, 0f)
         val fraction = maxOf(
-            above(controlsTop, SubtitleLook.ABOVE_CONTROLS_DP * density, lift),
+            above(controlsTop, aboveControls, lift),
             if (aboveMenu) above(top, gap, aside) else 0f,
         )
-        // Set only when it changed: each set asks for a new drawing.
-        if (fraction != bottom) {
-            bottom = fraction
-            view.setBottomPaddingFraction(fraction)
-        }
         // Beside an open menu: the box the line is centred in ends left of
         // it - a padding of the view at its right, which leaves the text's
         // size, a share of the picture's height, as it is.
@@ -450,6 +505,30 @@ class SubtitlePlacement internal constructor(private val view: SubtitleView) {
             end = inset
             view.setPadding(view.paddingLeft, view.paddingTop, inset, view.paddingBottom)
         }
+        // The rise above the controls or the menu: a line of text's, or a
+        // picture's by its own bottom edge - in the box as it is now.
+        var rise = (fraction - rest) * view.height
+        if (shown.any { it.bitmap != null }) {
+            val boxWidth = view.width - view.paddingLeft - view.paddingRight
+            val boxHeight = view.height - view.paddingTop - view.paddingBottom
+            val boxTop = viewTop + view.paddingTop
+            val textBottom = viewTop + view.height * (1f - rest)
+            fun clear(edge: Float?, clearance: Float, share: Float): Float =
+                if (edge == null || share <= 0f) {
+                    0f
+                } else {
+                    subtitleClearance(shown, boxWidth, boxHeight, boxTop, textBottom, edge, clearance) * share.coerceAtMost(1f)
+                }
+            rise = maxOf(clear(controlsTop, aboveControls, lift), if (aboveMenu) clear(top, gap, aside) else 0f)
+                .coerceAtMost(view.height * (1f - SubtitleLook.TEXT_SIZE_FRACTION))
+        }
+        // Set only when it changed: each set asks for a new drawing.
+        if (rest != resting) {
+            resting = rest
+            view.setBottomPaddingFraction(rest)
+        }
+        if (view.translationY != -rise) view.translationY = -rise
+        bottom = if (view.height > 0) rest + rise / view.height else rest
     }
 }
 

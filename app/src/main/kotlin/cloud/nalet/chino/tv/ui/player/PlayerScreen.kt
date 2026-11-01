@@ -289,6 +289,9 @@ private fun ExoPlayback(
     barFocus: ControlBarFocus,
 ) {
     val context = LocalContext.current
+    // The player's .sup sidecars on disk, its own until it is released
+    // (SupFiles.kt).
+    val sidecarFiles = remember(ready.masterUrl, ready.reloadKey) { SupSidecarCache.of(context).session() }
     // Key the ExoPlayer factory on (masterUrl + reloadKey) so switchQuality
     // tears down + rebuilds the player with the new ?q= URL. The ViewModel
     // bumps reloadKey on every prepare() that follows a switchQuality call.
@@ -369,9 +372,16 @@ private fun ExoPlayback(
         // one is in the audio menu.
         val sidecars = ready.sidecarSubtitles
         val surround = ready.surroundAudio
-        val playDataSourceFactory = MasterRewritingDataSource.Factory(httpFactory) { master ->
-            withoutDuplicateSubtitles(master, sidecars).let { if (surround) it else withStereoDefault(it) }
-        }
+        // A .sup sidecar reaches Media3 as the place of its file on disk,
+        // never as its bytes (SupSidecarDataSource): a film's PGS dialogue
+        // is tens of megabytes.
+        val supUris = sideSubs.filter { it.mimeType == MimeTypes.APPLICATION_PGS }.mapTo(HashSet()) { it.uri }
+        val playDataSourceFactory = SupSidecarDataSource.Factory(
+            MasterRewritingDataSource.Factory(httpFactory) { master ->
+                withoutDuplicateSubtitles(master, sidecars).let { if (surround) it else withStereoDefault(it) }
+            },
+            sidecarFiles,
+        ) { it in supUris }
         val mediaSourceFactory =
             androidx.media3.exoplayer.source.DefaultMediaSourceFactory(playDataSourceFactory)
                 .setLoadErrorHandlingPolicy(retryPolicy)
@@ -708,6 +718,7 @@ private fun ExoPlayback(
             )
             player.removeListener(listener)
             player.release()
+            sidecarFiles.release()
             // A player released while it played: its time counts until now.
             viewModel.advanceGuard.playing(false)
         }
@@ -1163,6 +1174,18 @@ private fun ExoPlayback(
             placement.controlsTop = controlsTop
             placement.lift = subtitleLift
         }
+    }
+    // What is on screen, laid out: a picture rises by its own bottom edge.
+    DisposableEffect(player, subtitlePlacement.value) {
+        val placement = subtitlePlacement.value
+        val cues = object : Player.Listener {
+            override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
+                placement?.cues = cueGroup.cues
+            }
+        }
+        placement?.cues = player.currentCues.cues
+        player.addListener(cues)
+        onDispose { player.removeListener(cues) }
     }
     // While a menu is open - subtitles, audio, quality, speed - the line
     // moves out of its way, left of it or above it, at the controls' pace,
