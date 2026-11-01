@@ -42,10 +42,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The TV's safe area (the design system's tv focus): everything that takes
- * focus stays 48 dp from the left and right edges and 27 dp from the top and
- * bottom, measured to its ring at its growth - the shell's rail and top bar,
- * and the player's controls - on the TV's 960 × 540 dp (1920 × 1080 px).
+ * Where things sit on the TV's 960 × 540 dp (1920 × 1080 px). The shell has
+ * no margin round the screen, as chino-web has none: the rail at the left
+ * edge, the top bar at the top edge, their lines and canvas out to the edges,
+ * a page's content a gutter in - every focused item's ring whole on the
+ * screen. The player's controls stay inside the TV's safe area (the design
+ * system's tv focus), 48 dp from the left and right edges and 27 dp from the
+ * top and bottom, measured to a ring at its growth, over a picture to the
+ * screen's edges.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -80,15 +84,39 @@ class SafeAreaTest {
     private fun control(name: String) =
         assertInside(name, reach(compose.onNode(hasContentDescription(name)), 1.05f, ringOutside = true))
 
+    /** A control of the shell's: its ring at its growth whole on the screen and
+     *  inside [within] - the rail, left of its line, or the top bar, above
+     *  its line. */
+    private fun shellControl(name: String, within: Rect) {
+        val r = reach(compose.onNode(hasContentDescription(name)), 1.05f, ringOutside = true)
+        assertTrue("$name reaches $r, past $within",
+            r.left >= within.left - 0.01f && r.top >= within.top - 0.01f &&
+                r.right <= within.right + 0.01f && r.bottom <= within.bottom + 0.01f)
+    }
+
+    /** The window as drawn (the screenshot tests' way under Robolectric). */
+    private fun window(): android.graphics.Bitmap {
+        val view = compose.activity.window.decorView
+        val shot = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+        compose.runOnIdle { view.draw(android.graphics.Canvas(shot)) }
+        return shot
+    }
+
+    /** Whether [color] is drawn anywhere in x in [xs], y in [ys]. */
+    private fun android.graphics.Bitmap.has(color: Color, xs: IntRange, ys: IntRange): Boolean =
+        xs.any { x -> ys.any { y -> getPixel(x, y) == color.toArgb() } }
+
+    private fun dp(px: Rect) = Rect(px.left / 2f, px.top / 2f, px.right / 2f, px.bottom / 2f)
+
     private fun show(content: @Composable () -> Unit) {
         compose.setContent { ChinoTvTheme { content() } }
         compose.waitForIdle()
     }
 
     @Test
-    fun `the shell's rail and top bar, their rings at their growth inside the safe area`() {
+    fun `the shell's rail at the left edge and its top bar at the top edge, as chino-web's, every ring whole on the screen`() {
         show {
-            SafeAreaScreen {
+            ShellScreen {
                 Row(Modifier.fillMaxSize()) {
                     TvSideRail(activeType = null, onHome = {}, onMovies = {}, onSeries = {}, onSettings = {}, onZap = {}, onWatchlist = {})
                     Column(Modifier.weight(1f)) {
@@ -98,26 +126,80 @@ class SafeAreaTest {
                 }
             }
         }
-        for (name in listOf("Home", "Movies", "Series", "Watchlist", "Zap", "Settings", "Account")) control(name)
+        val shot = window()
+        val w = shot.width
+        val h = shot.height
+        // In px: the rail 120 wide from the left edge, its line at its right
+        // edge from the top edge to the bottom edge; the logo cell's and the
+        // top bar's line 96 px down, from the left edge to the right edge.
+        assertTrue("the rail's line at the top edge", shot.has(ChinoBorder, 114 until 120, 0..1))
+        assertTrue("the rail's line at the bottom edge", shot.has(ChinoBorder, 114 until 120, h - 2 until h))
+        assertTrue("the logo's line at the left edge", shot.has(ChinoBorder, 0..1, 90 until 97))
+        assertTrue("the top bar's line at the right edge", shot.has(ChinoBorder, w - 2 until w, 90 until 97))
+        // The rail's items inside it, left of its line; the top bar's controls
+        // inside the bar, above its line - every ring at its growth whole.
+        val rail = Rect(0f, 0f, 59f, 540f)
+        for (name in listOf("Home", "Movies", "Series", "Watchlist", "Zap", "Settings")) shellControl(name, rail)
+        shellControl("Account", Rect(60f, 0f, 960f, 47f))
+        // The search field a gutter past the rail's line, the account a
+        // gutter from the right edge (12 of the TV's dp, chino-web's 16 px).
+        assertEquals(72f, dp(compose.onNode(hasText("Search movies, shows…")).fetchSemanticsNode().boundsInRoot).left, 0.5f)
+        assertEquals(948f, dp(compose.onNode(hasContentDescription("Account")).fetchSemanticsNode().boundsInRoot).right, 0.5f)
         // The search field, a row: its ring inside its edge, 2 % growth.
-        assertInside("search", reach(compose.onNode(hasText("Search movies, shows…")), 1.02f, ringOutside = false))
+        val search = reach(compose.onNode(hasText("Search movies, shows…")), 1.02f, ringOutside = false)
+        assertTrue("search reaches $search", search.left >= 60f && search.top >= 0f && search.bottom <= 47f)
     }
 
     @Test
-    fun `a page's scrim and its backdrop reach past the safe area to the screen's edges`() {
+    fun `Home's hero a gutter from the rail's line, the top bar's and the right edge, as chino-web's hero`() {
+        val hero = cloud.nalet.chino.tv.data.model.Item(id = "m1", title = "Quiet Orchard", kind = "movie", year = 2021, rating = 7.4)
         show {
-            SafeAreaScreen {
+            ShellScreen {
                 ChinoPage {
-                    Box(Modifier.fillMaxWidth().height(100.dp).bleedToScreenEdges(bottom = false).background(Color.Red))
+                    cloud.nalet.chino.tv.ui.library.LibraryContent(
+                        movies = listOf(hero), series = emptyList(), continueWatching = emptyList(),
+                        watchlist = emptySet(), baseUrl = "https://media.test", streamToken = "t",
+                        genres = emptyList(), filter = cloud.nalet.chino.tv.ui.library.BrowseFilter(), heroItem = hero, heroCount = 1,
+                        onItemSelected = {}, onHeroPlay = {}, onSearch = {}, onSettings = {}, onWatchlist = {},
+                        onAccountClick = {}, onMoviesNav = {}, onSeriesNav = {}, noticesBell = null,
+                        activeAccount = null, onFilterChange = {}, onZap = {},
+                    )
+                }
+            }
+        }
+        val playNode = compose.onNode(hasText("play")).fetchSemanticsNode()
+        val y = playNode.boundsInRoot.center.y.toInt()
+        val shot = window()
+        val black = Color.Black.toArgb()
+        val canvas = ChinoBg.toArgb()
+        // In px: the hero's black from 144 (the rail's 120 and the gutter's
+        // 24) to 1896 (the gutter from the right edge), from 120 down (the
+        // top bar's 96 and the gutter).
+        assertEquals("the hero beside its right gutter", black, shot.getPixel(1893, y))
+        assertEquals("the right gutter", canvas, shot.getPixel(1906, y))
+        assertEquals("the gutter beside the rail", canvas, shot.getPixel(136, y))
+        assertEquals("the hero beside the rail's gutter", black, shot.getPixel(147, y))
+        assertEquals("the gutter under the top bar", canvas, shot.getPixel(600, 112))
+        assertEquals("the hero under it", black, shot.getPixel(600, 124))
+        // Its title and play 48 dp inside it.
+        assertEquals(216f, compose.onNode(hasText("Quiet Orchard") and androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(androidx.compose.ui.semantics.SemanticsActions.OnClick)).fetchSemanticsNode().boundsInRoot.left, 0.5f)
+        val play = playNode.boundsInRoot
+        val grown = if (playNode.config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.Focused) { false }) 1.05f else 1f
+        assertEquals(216f, play.center.x - play.width / grown / 2f, 0.5f)
+    }
+
+    @Test
+    fun `a page's backdrop and its scrim reach the screen's edges, with no margin round the shell`() {
+        show {
+            ShellScreen {
+                ChinoPage {
+                    Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Red))
                     Box(Modifier.fillMaxSize().padding(top = 200.dp).scrim())
                 }
             }
         }
-        // The window as drawn (the screenshot tests' way under Robolectric).
-        val view = compose.activity.window.decorView
-        val shot = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
-        compose.runOnIdle { view.draw(android.graphics.Canvas(shot)) }
-        // The backdrop at the screen's top-left corner, past the safe area.
+        val shot = window()
+        // The backdrop at the screen's top corners.
         assertEquals(Color.Red.toArgb(), shot.getPixel(2, 2))
         assertEquals(Color.Red.toArgb(), shot.getPixel(shot.width - 3, 2))
         // The scrim at the bottom corners: the canvas dimmed, not the canvas.

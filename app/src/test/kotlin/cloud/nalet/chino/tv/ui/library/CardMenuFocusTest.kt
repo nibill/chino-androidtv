@@ -24,7 +24,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import cloud.nalet.chino.tv.data.api.ContinueWatchingItem
 import cloud.nalet.chino.tv.data.model.Item
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,7 +55,7 @@ class CardMenuFocusTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     LibraryContent(
                         movies = movies,
                         series = emptyList(), continueWatching = continueWatching,

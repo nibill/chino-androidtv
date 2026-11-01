@@ -38,7 +38,7 @@ import cloud.nalet.chino.tv.data.model.Trailer
 import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.ui.theme.ChinoFocus
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import cloud.nalet.chino.tv.ui.theme.UI_SCALE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,7 +56,7 @@ import org.robolectric.annotation.GraphicsMode
  * its full width, none cut or squeezed to nothing - and every control stands
  * the control gap from the one beside it and from the line above; the remote's
  * RIGHT and LEFT follow the row's order across the wrap. The page as the
- * shell hosts it, in the safe area, on a 1920 × 1080 TV, its text measured in
+ * shell hosts it, edge to edge, on a 1920 × 1080 TV, its text measured in
  * the app's own faces.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -130,7 +130,7 @@ class TitleRowWrapTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen { DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
+                ShellScreen { DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
             }
         }
         compose.waitUntil(5_000) { vm.state.value is DetailUiState.Ready }

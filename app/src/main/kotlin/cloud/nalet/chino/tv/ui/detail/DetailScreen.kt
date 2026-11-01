@@ -99,15 +99,13 @@ import cloud.nalet.chino.tv.ui.theme.shelfRoom
 import cloud.nalet.chino.tv.ui.theme.LoadError
 import cloud.nalet.chino.tv.ui.theme.WatchedMark
 import cloud.nalet.chino.tv.ui.theme.WatchlistMark
-import cloud.nalet.chino.tv.ui.theme.bleedToScreenEdges
-import cloud.nalet.chino.tv.ui.theme.ScrollsInSafeArea
+import cloud.nalet.chino.tv.ui.theme.ScrollsClearOfEdges
 import cloud.nalet.chino.tv.ui.theme.LocalFocusAlong
 import cloud.nalet.chino.tv.ui.theme.PageTop
 import cloud.nalet.chino.tv.ui.theme.pageTop
 import cloud.nalet.chino.tv.ui.theme.runToScreenEnd
-import cloud.nalet.chino.tv.ui.theme.scrollsToScreenEdges
 import cloud.nalet.chino.tv.ui.theme.ChinoSurfaceHi
-import cloud.nalet.chino.tv.ui.theme.SafeArea
+import cloud.nalet.chino.tv.ui.theme.Shell
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -297,9 +295,10 @@ private fun DetailContent(
             .background(ChinoBg)
             .onGloballyPositioned { pageTop = it.boundsInWindow().top },
     ) {
-        // The still reaches the screen's edges past the safe area the page
-        // sits in; what sits on it stays inside.
-        Box(modifier = Modifier.fillMaxWidth().height(560.dp).bleedToScreenEdges(bottom = false)) {
+        // The still from the screen's top edge, out to its left and right
+        // edges, as chino-web's backdrop; what sits on it keeps the shell's
+        // gutter.
+        Box(modifier = Modifier.fillMaxWidth().height(560.dp)) {
             AsyncImage(
                 model = backdropUrl,
                 contentDescription = s.item.title,
@@ -310,11 +309,11 @@ private fun DetailContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .drawBehind {
-                        // The still starts above the page by the safe area's
-                        // top; until the column is placed, the canvas from
-                        // under the still's middle.
+                        // The still starts at the page's top; until the
+                        // column is placed, the canvas from under the still's
+                        // middle.
                         val solidFrom = if (contentTop.isNaN()) size.height * 0.45f
-                        else (contentTop + SafeArea.Vertical.toPx()).coerceIn(0f, size.height)
+                        else contentTop.coerceIn(0f, size.height)
                         val fade = STILL_FADE.toPx().coerceAtMost(solidFrom)
                         if (fade > 0f) {
                             drawRect(
@@ -334,24 +333,24 @@ private fun DetailContent(
         // Content overlays the bottom half of the backdrop so the title + CTAs
         // sit on top of the gradient. For series, the page is taller (episodes
         // strip below the fold) so we let it scroll instead of fixing to the
-        // viewport - out to the screen's end and bottom edges, its rows
-        // running to the screen's edge; what rests stays inside the safe
-        // area, and a focused item is brought into view inside it.
-        ScrollsInSafeArea(trailing = SafeArea.Vertical) {
+        // viewport - out to the screen's right and bottom edges, its rows
+        // running to the right edge; a focused item is brought into view a
+        // gutter clear of the bottom edge.
+        ScrollsClearOfEdges(trailing = Shell.Gutter) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .scrollsToScreenEdges()
                 .verticalScroll(rememberScrollState())
                 .pageTop(head)
-                // 24dp horizontal = the mobile detail content inset, so the
-                // poster + title + episodes line up with the browse grid you
-                // came from (was 64dp — far more indented than the rest).
+                // Where the shell's content starts, though the page has no
+                // rail and no top bar: the poster and the title where Home's
+                // hero starts, the rows where its shelves do; a gutter from
+                // the screen's right edge.
                 .padding(
-                    start = 24.dp,
-                    end = 24.dp + SafeArea.Horizontal,
-                    top = 48.dp,
-                    bottom = 48.dp + SafeArea.Vertical,
+                    start = Shell.ContentStart,
+                    end = Shell.Gutter,
+                    top = Shell.ContentTop,
+                    bottom = 48.dp,
                 ),
             verticalArrangement = Arrangement.Bottom,
         ) {
@@ -478,15 +477,15 @@ private fun DetailContent(
 }
 
 /** How far the title page's rows run past its column's end to the screen's
- *  edge: the column's own padding there and the safe area's. */
-private val RowRun = 24.dp + SafeArea.Horizontal
+ *  edge: the column's gutter there. */
+private val RowRun = Shell.Gutter
 
-/** A row of the title page brings a focused card or chip into view inside
- *  the safe area - clear of its end by the safe area's side and the room a
- *  ring needs. */
+/** A row of the title page brings a focused card or chip into view clear of
+ *  the screen's edge by the gutter - its room for the ring past the edge
+ *  ([shelfRoom]) and the gutter within it. */
 @Composable
 private fun RowToScreenEdge(content: @Composable () -> Unit) =
-    ScrollsInSafeArea(trailing = SafeArea.Horizontal + ChinoFocus.Room, content = content)
+    ScrollsClearOfEdges(trailing = Shell.Gutter + ChinoFocus.Room, content = content)
 
 /** Detail action row, the order and states every app has (docs/chino, title
  *  actions): Play (or Resume) · Start over · Trailer, then add to list - the

@@ -29,7 +29,7 @@ import cloud.nalet.chino.tv.ui.auth.AccountPickerScreen
 import cloud.nalet.chino.tv.ui.theme.LogoMark
 import cloud.nalet.chino.tv.ui.theme.ChinoBg
 import cloud.nalet.chino.tv.ui.theme.LocalSignIn
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import cloud.nalet.chino.tv.ui.auth.AuthViewModel
@@ -743,16 +743,16 @@ fun ChinoTvNavHost(container: AppContainer) {
 }
 
 /**
- * A destination of the shell: its screen inside the TV's safe area
- * ([SafeAreaScreen]), the one place the shell lays it out - so no screen
- * sets its own edges. The player, a trailer and Zap are pictures to the
- * screen's edges and put their own controls inside it.
+ * A destination of the shell: its screen edge to edge on the canvas, as
+ * chino-web's ([ShellScreen]), the one place the shell lays it out. The
+ * player, a trailer and Zap are pictures to the screen's edges and put
+ * their own controls inside the TV's safe area.
  */
 private fun NavGraphBuilder.screen(
     route: String,
     arguments: List<NamedNavArgument> = emptyList(),
     content: @Composable (NavBackStackEntry) -> Unit,
-) = composable(route = route, arguments = arguments) { entry -> SafeAreaScreen { content(entry) } }
+) = composable(route = route, arguments = arguments) { entry -> ShellScreen { content(entry) } }
 
 /** Brand-coloured cold-launch splash. Shows for the duration of the
  *  AccountStore EncryptedSharedPreferences open + decrypt — typically

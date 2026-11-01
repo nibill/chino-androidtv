@@ -25,7 +25,7 @@ import cloud.nalet.chino.tv.data.model.Item
 import cloud.nalet.chino.tv.data.model.ItemsPage
 import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,7 +77,7 @@ class BrowseFocusTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     BrowseScreen(
                         viewModel = vm, pageTitle = "Movies", type = "movie", onItemSelected = {},
                         onHomeNav = {}, onMoviesNav = {}, onSeriesNav = {}, onSearch = {}, onSettings = {},

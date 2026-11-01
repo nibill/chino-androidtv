@@ -26,8 +26,7 @@ import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.feedback.BugReporter
 import cloud.nalet.chino.tv.feedback.FilePendingReportStore
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeArea
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -40,11 +39,11 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * Settings with the remote, down to its last control and back: a focused
  * control brings the text under it into view along with itself - change
- * server its "Connected to media.test.", the page's last line, whole and
- * inside the safe area, never cut at the screen's bottom - and the focus
+ * server its "Connected to media.test.", the page's last line, whole and a
+ * gutter clear of the screen's bottom edge, never cut at it - and the focus
  * back on the first control scrolls the page back to its top, its
  * "settings" heading shown; UP there shows it too. In the TV's dp: 960 ×
- * 540, 2 px each; the safe area 27 dp at the bottom.
+ * 540, 2 px each; the shell's gutter 12 dp at the bottom.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w960dp-h540dp-xhdpi")
@@ -70,7 +69,7 @@ class SettingsScrollTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     SettingsScreen(
                         viewModel = viewModel,
                         onSwitchAccount = {},
@@ -104,7 +103,7 @@ class SettingsScrollTest {
         return b.top / 2f to b.bottom / 2f
     }
 
-    private val safeBottom = 540f - 27f
+    private val clearBottom = 540f - 12f
 
     /** The page's first control: the first setting's on/off button. */
     private fun firstControl() = compose.onAllNodes((hasText("on") or hasText("off")) and hasClickAction())[0]
@@ -125,12 +124,12 @@ class SettingsScrollTest {
     }
 
     @Test
-    fun `change server brings the page's last line into view whole, inside the safe area`() {
+    fun `change server brings the page's last line into view whole, a gutter clear of the bottom edge`() {
         show(takesReports = false)
         toFirstControl()
         downTo("change server")
         val (top, bottom) = place("Connected to media.test.")
-        assertTrue("the last line at $top..$bottom dp", top >= 0f && bottom <= safeBottom + 0.5f)
+        assertTrue("the last line at $top..$bottom dp", top >= 0f && bottom <= clearBottom + 0.5f)
         assertTrue("scrolled down to it", scrolled() > 0f)
     }
 
@@ -140,11 +139,11 @@ class SettingsScrollTest {
         toFirstControl()
         downTo("change server")
         val (_, bottom) = place("Connected to media.test.")
-        assertTrue("its line ends at $bottom dp", bottom <= safeBottom + 0.5f)
+        assertTrue("its line ends at $bottom dp", bottom <= clearBottom + 0.5f)
         press(Key.DirectionDown)
         compose.onNode(isFocused()).assert(hasText("report a problem"))
         val (_, last) = place("Tell the people who run this server. The app's and the device's details go with your report.")
-        assertTrue("the last line ends at $last dp", last <= safeBottom + 0.5f)
+        assertTrue("the last line ends at $last dp", last <= clearBottom + 0.5f)
     }
 
     @Test

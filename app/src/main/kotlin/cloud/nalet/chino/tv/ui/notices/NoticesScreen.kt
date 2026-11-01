@@ -64,6 +64,7 @@ import cloud.nalet.chino.tv.ui.theme.ChinoAccent
 import cloud.nalet.chino.tv.ui.theme.ChinoMuted
 import cloud.nalet.chino.tv.ui.theme.ChinoSurface
 import cloud.nalet.chino.tv.ui.theme.ChinoText
+import cloud.nalet.chino.tv.ui.theme.Shell
 import com.composables.icons.lucide.CheckCheck
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
@@ -193,10 +194,12 @@ private fun NoticesList(
         focusNotice(0)
     }
 
+    // From the rail's line and the top bar's to the screen's right and bottom
+    // edges; the notices a gutter in from each, as chino-web's page.
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(Shell.Gutter),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "header") {

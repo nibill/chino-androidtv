@@ -67,6 +67,7 @@ import cloud.nalet.chino.tv.ui.browse.PosterGridCard
 import cloud.nalet.chino.tv.ui.detail.formatRoles
 import cloud.nalet.chino.tv.ui.library.TvSideRail
 import cloud.nalet.chino.tv.ui.library.TvTopBar
+import cloud.nalet.chino.tv.ui.theme.Shell
 import kotlinx.coroutines.launch
 
 /**
@@ -168,10 +169,13 @@ private fun Filmography(
     readMoreFocus: FocusRequester,
     onReadBiography: () -> Unit,
 ) {
+    // From the rail's line and the top bar's to the screen's right and bottom
+    // edges, the titles that scroll by shown to them; the content a gutter
+    // in from each, as chino-web's.
     LazyVerticalGrid(
         columns = GridCells.Fixed(6),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(Shell.Gutter),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {

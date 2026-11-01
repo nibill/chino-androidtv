@@ -90,7 +90,7 @@ fun DeleteAccountScreen(
 
     val who = viewModel.account?.let { a -> a.email.ifBlank { a.displayName } }
     ChinoPage {
-        // Inside the safe area the shell lays it out in.
+        // Centred on the screen, which the shell lays out edge to edge.
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(
                 modifier = Modifier.width(720.dp),

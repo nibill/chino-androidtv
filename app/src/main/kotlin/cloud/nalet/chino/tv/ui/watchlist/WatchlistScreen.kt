@@ -79,6 +79,7 @@ import cloud.nalet.chino.tv.ui.theme.FocusKind
 import cloud.nalet.chino.tv.ui.theme.focusStyle
 import cloud.nalet.chino.tv.ui.theme.rememberItemFocus
 import cloud.nalet.chino.tv.ui.theme.LoadError
+import cloud.nalet.chino.tv.ui.theme.Shell
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Pencil
@@ -254,16 +255,19 @@ private fun HubContent(
     onNewList: () -> Unit,
     newListFocus: FocusRequester,
 ) {
+    // From the rail's line and the top bar's to the screen's right and
+    // bottom edges, as chino-web's page: the shelves run to the right edge,
+    // the content a gutter in.
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp),
+            .padding(bottom = Shell.Gutter),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp),
+                .padding(start = Shell.Gutter, end = Shell.Gutter, top = Shell.Gutter, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -287,7 +291,7 @@ private fun HubContent(
                 )
                 else -> LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    contentPadding = PaddingValues(horizontal = Shell.Gutter),
                     modifier = Modifier.padding(bottom = 12.dp),
                 ) {
                     items(shelf, key = { it.id }) { item ->
@@ -323,7 +327,7 @@ private fun ShelfHeader(list: Watchlist, onOpen: () -> Unit) {
     val focus = rememberItemFocus()
     Row(
         modifier = Modifier
-            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp)
+            .padding(start = Shell.Gutter, end = Shell.Gutter, top = 16.dp, bottom = 8.dp)
             .focusStyle(focus, FocusKind.Control, surface = Color.Transparent)
             .focusable()
             .onKeyEvent { e ->
@@ -358,7 +362,8 @@ private fun ShelfHint(text: String) {
         text = text,
         color = ChinoMuted,
         fontSize = 14.sp,
-        modifier = Modifier.padding(start = 34.dp, bottom = 16.dp),
+        // Under the list's name: the gutter and the header's own 10.
+        modifier = Modifier.padding(start = Shell.Gutter + 10.dp, bottom = 16.dp),
     )
 }
 
@@ -384,7 +389,7 @@ private fun MoreContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp),
+                .padding(start = Shell.Gutter, end = Shell.Gutter, top = Shell.Gutter, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             // Room between the buttons for a focused one's grown ring.
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
@@ -425,7 +430,7 @@ private fun MoreContent(
                 columns = GridCells.Fixed(6),
                 modifier = Modifier.fillMaxSize(),
                 // Room above the first row for a focused card's growth and ring.
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = ChinoFocus.Room, bottom = 32.dp),
+                contentPadding = PaddingValues(start = Shell.Gutter, end = Shell.Gutter, top = ChinoFocus.Room, bottom = Shell.Gutter),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {

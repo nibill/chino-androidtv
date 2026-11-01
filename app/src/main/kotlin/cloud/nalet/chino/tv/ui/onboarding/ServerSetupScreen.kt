@@ -75,7 +75,7 @@ fun ServerSetupScreen(
     val probing = state is ServerSetupState.Probing
 
     ChinoPage {
-        // Inside the safe area the shell lays it out in.
+        // Centred on the screen, which the shell lays out edge to edge.
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

@@ -20,6 +20,7 @@ import androidx.compose.ui.test.pressKey
 import cloud.nalet.chino.tv.data.model.Item
 import cloud.nalet.chino.tv.ui.library.BrowseFilter
 import cloud.nalet.chino.tv.ui.library.LibraryContent
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -28,12 +29,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * The safe area sets where resting content starts, not a clip (the design
- * system's tv focus): Home scrolls out to the screen's end and bottom edges
- * and its shelves run to the screen's edge, while the card the remote moves
- * to - its ring at its growth - is brought into view inside the safe area.
- * In the TV's dp: 960 × 540, 2 px each; the safe area 48 dp at the sides,
- * 27 at the top and bottom.
+ * No margin round the screen, as chino-web has none: Home, a title's page,
+ * Movies and a person's page scroll out to the screen's right and bottom
+ * edges and their rows run to the right edge; what rests sits a gutter in
+ * from the rail's line, the top bar's and the screen's right edge, and the
+ * card the remote moves to - its ring at its growth - is brought into view
+ * whole, a gutter clear of the right and bottom edges. In the TV's dp: 960 ×
+ * 540, 2 px each; the rail 60 wide, the top bar 48 high, the gutter 12.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w960dp-h540dp-xhdpi")
@@ -51,7 +53,7 @@ class PageEdgesTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     ChinoPage {
                         LibraryContent(
                             movies = movies, series = shows, continueWatching = emptyList(),
@@ -85,10 +87,10 @@ class PageEdgesTest {
     }
 
     @Test
-    fun `Home's shelves run to the screen's edge, the page to its bottom, the focused card inside the safe area`() {
+    fun `Home's shelves run to the screen's edge, the page to its bottom, the focused card a gutter clear of them`() {
         home()
-        // The shelves' rows reach the screen's right edge, past the safe
-        // line at 912 dp; so does the page, down to the bottom edge.
+        // The shelves' rows reach the screen's right edge, past the gutter
+        // at 948 dp; so does the page, down to the bottom edge.
         val rows = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .fetchSemanticsNodes().map { dp(it.boundsInRoot) }
             // The ones on the screen; those further down are scrolled out.
@@ -98,30 +100,34 @@ class PageEdgesTest {
         val page = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .fetchSemanticsNode().boundsInRoot.let(::dp)
         assertTrue("the page ends at ${page.right}, ${page.bottom} dp", page.right >= 959.5f && page.bottom >= 539.5f)
-        // A card at rest is drawn across the safe line, to the screen's edge.
+        // A card at rest is drawn to the screen's edge, the first one a
+        // gutter from the rail's line.
         val shelf = rows.first()
         val cards = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick))
             .fetchSemanticsNodes().map { dp(it.boundsInRoot) }
-            .filter { it.height > 0f && it.top >= shelf.top }
-        assertTrue("a card crosses the safe line: $cards", cards.any { it.left < 912f && it.right > 912f })
+            // The shelves', right of the rail's line.
+            .filter { it.height > 0f && it.top >= shelf.top && it.left >= 60f }
+        assertTrue("a card drawn to the screen's edge: $cards", cards.any { it.left < 960f && it.right >= 959.5f })
+        assertEquals(72f, cards.minOf { it.left }, 0.5f)
         // The remote along the first shelf: down from the hero, then right
         // to its last card, then down the shelves - the focused card and its
-        // ring always inside the safe area.
+        // ring always whole, past the rail's line, a gutter clear of the
+        // right and bottom edges.
         press(Key.DirectionDown)
         repeat(movies.size + 1) {
             val r = focusedReach()
-            assertTrue("focused card reaches $r", r.right <= 912.5f && r.bottom <= 513.5f && r.left >= 47.5f)
+            assertTrue("focused card reaches $r", r.right <= 948.5f && r.bottom <= 528.5f && r.left >= 60f)
             press(Key.DirectionRight)
         }
         repeat(3) {
             press(Key.DirectionDown)
             val r = focusedReach()
-            assertTrue("focused card reaches $r", r.right <= 912.5f && r.bottom <= 513.5f && r.top >= 26.5f)
+            assertTrue("focused card reaches $r", r.right <= 948.5f && r.bottom <= 528.5f && r.top >= 47.5f)
         }
     }
 
     @Test
-    fun `the title page's rows run to the screen's edge, the focused card inside the safe area`() {
+    fun `the title page's rows run to the screen's edge, the focused card a gutter clear of it`() {
         tv()
         val movie = Item(
             id = "m0", title = "Quiet Orchard", kind = "movie", year = 2021,
@@ -154,7 +160,7 @@ class PageEdgesTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen { cloud.nalet.chino.tv.ui.detail.DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
+                ShellScreen { cloud.nalet.chino.tv.ui.detail.DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
             }
         }
         compose.waitUntil(5_000) { vm.state.value is cloud.nalet.chino.tv.ui.detail.DetailUiState.Ready }
@@ -174,9 +180,114 @@ class PageEdgesTest {
         assertTrue("the page ends at ${page.right}, ${page.bottom} dp", page.right >= 959.5f && page.bottom >= 539.5f)
         repeat(movies.size) {
             val r = focusedReach()
-            assertTrue("focused card reaches $r", r.right <= 912.5f && r.bottom <= 513.5f && r.left >= 47.5f)
+            assertTrue("focused card reaches $r", r.right <= 948.5f && r.bottom <= 528.5f && r.left >= 60f)
             press(Key.DirectionRight)
         }
+    }
+
+    /** The server of the pages below: 30 titles, a few genres, a person. */
+    private fun server(): cloud.nalet.chino.tv.data.api.ChinoApi {
+        val many = (1..30).map { Item(id = "m$it", title = "Harbour Light $it", kind = "movie", year = 1990 + it) }
+        return java.lang.reflect.Proxy.newProxyInstance(
+            cloud.nalet.chino.tv.data.api.ChinoApi::class.java.classLoader, arrayOf(cloud.nalet.chino.tv.data.api.ChinoApi::class.java),
+        ) { _, method, _ ->
+            when (method.name) {
+                "listItems" -> cloud.nalet.chino.tv.data.model.ItemsPage(many)
+                "listGenres" -> cloud.nalet.chino.tv.data.api.GenresResponse(
+                    listOf("Action", "Action & Adventure", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy"),
+                )
+                "getPerson" -> cloud.nalet.chino.tv.data.api.PersonDetail(id = "p1", name = "Alex Marlow", items = many)
+                "mintStreamToken" -> cloud.nalet.chino.tv.data.api.StreamTokenResponse(token = "t")
+                "hashCode" -> 0
+                "equals" -> false
+                "toString" -> "the server"
+                else -> throw java.io.IOException("not asked here")
+            }
+        } as cloud.nalet.chino.tv.data.api.ChinoApi
+    }
+
+    /** Movies on a TV, its 30 titles loaded. */
+    private fun movies() {
+        tv()
+        val api = server()
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = cloud.nalet.chino.tv.ui.browse.BrowseViewModel(
+            api = api,
+            streamTokens = cloud.nalet.chino.tv.data.auth.StreamTokenManager(api),
+            telemetry = cloud.nalet.chino.tv.data.telemetry.Telemetry(ctx) { null },
+            userFlags = cloud.nalet.chino.tv.data.UserFlagsRepository(api),
+            baseUrl = "https://media.test/api",
+            type = "movie",
+        )
+        compose.setContent {
+            ChinoTvTheme {
+                Remote()
+                ShellScreen {
+                    cloud.nalet.chino.tv.ui.browse.BrowseScreen(
+                        viewModel = vm, pageTitle = "Movies", type = "movie", onItemSelected = {},
+                        onHomeNav = {}, onMoviesNav = {}, onSeriesNav = {}, onSearch = {}, onSettings = {},
+                        onWatchlist = {}, onZapNav = {}, onAccountClick = {},
+                    )
+                }
+            }
+        }
+        compose.waitUntil(5_000) { vm.state.value is cloud.nalet.chino.tv.ui.browse.BrowseUiState.Ready }
+        compose.waitForIdle()
+    }
+
+    /** The card that reads [title], in the TV's dp. */
+    private fun cardAt(title: String): Rect = dp(
+        compose.onNode(androidx.compose.ui.test.hasText(title) and SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick))
+            .fetchSemanticsNode().boundsInRoot,
+    )
+
+    @Test
+    fun `Movies scrolls to the screen's right and bottom edges and its chip rows run to the edge, resting a gutter in`() {
+        movies()
+        // The chip rows reach the screen's right edge; the grid reaches the
+        // right and the bottom edges.
+        val rows = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+            .fetchSemanticsNodes().map { dp(it.boundsInRoot) }.filter { it.height > 0f }
+        assertTrue("three chip rows: $rows", rows.size == 3)
+        for (row in rows) assertTrue("a chip row ends at ${row.right} dp", row.right >= 959.5f)
+        val page = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .fetchSemanticsNode().boundsInRoot.let(::dp)
+        assertTrue("the grid ends at ${page.right}, ${page.bottom} dp", page.right >= 959.5f && page.bottom >= 539.5f)
+        // At rest the page's title and its cards a gutter in: from the rail's
+        // line, the top bar's and the screen's right edge.
+        val heading = dp(compose.onNode(androidx.compose.ui.test.hasText("movies")).fetchSemanticsNode().boundsInRoot)
+        assertEquals(72f, heading.left, 0.5f)
+        assertEquals(60f, heading.top, 0.5f)
+        assertEquals(72f, cardAt("Harbour Light 1").left, 0.5f)
+        assertEquals(948f, cardAt("Harbour Light 6").right, 0.5f)
+    }
+
+    @Test
+    fun `a person's titles scroll to the screen's bottom edge, resting a gutter in`() {
+        tv()
+        val api = server()
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = cloud.nalet.chino.tv.ui.person.PersonViewModel(
+            api = api,
+            streamTokens = cloud.nalet.chino.tv.data.auth.StreamTokenManager(api),
+            telemetry = cloud.nalet.chino.tv.data.telemetry.Telemetry(ctx) { null },
+            baseUrl = "https://media.test/api",
+            personId = "p1",
+            userFlags = cloud.nalet.chino.tv.data.UserFlagsRepository(api),
+        )
+        compose.setContent {
+            ChinoTvTheme {
+                Remote()
+                ShellScreen { cloud.nalet.chino.tv.ui.person.PersonScreen(viewModel = vm, onItemSelected = {}, onZapNav = {}) }
+            }
+        }
+        compose.waitUntil(5_000) { vm.state.value is cloud.nalet.chino.tv.ui.person.PersonUiState.Ready }
+        compose.waitForIdle()
+        val page = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .fetchSemanticsNode().boundsInRoot.let(::dp)
+        assertTrue("the grid ends at ${page.right}, ${page.bottom} dp", page.right >= 959.5f && page.bottom >= 539.5f)
+        assertEquals(72f, cardAt("Harbour Light 1").left, 0.5f)
+        assertEquals(948f, cardAt("Harbour Light 6").right, 0.5f)
     }
 
     /** A TV: the platform would bring a focused item into view at its pivot. */

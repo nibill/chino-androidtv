@@ -39,7 +39,7 @@ import cloud.nalet.chino.tv.data.model.Item
 import cloud.nalet.chino.tv.data.model.ItemsPage
 import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -120,7 +120,7 @@ class TitleShelvesTest {
             ChinoTvTheme {
                 Remote()
                 val holder = rememberSaveableStateHolder()
-                SafeAreaScreen {
+                ShellScreen {
                     if (opened == null) {
                         holder.SaveableStateProvider("title") {
                             DetailScreen(

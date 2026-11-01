@@ -363,10 +363,9 @@ class FocusScreenshotTest {
     @Composable
     private fun Languages() {
         // As Settings lays it out: the section in the column beside the rail
-        // (1280 dp less the safe area's 2 × 64, the rail's 80 and the
-        // column's 2 × 24), on the canvas, its heading as Settings has it,
-        // Original chosen.
-        Box(Modifier.width(1024.dp)) {
+        // (1280 dp less the rail's 80 and the shell's gutter, 2 × 16), on
+        // the canvas, its heading as Settings has it, Original chosen.
+        Box(Modifier.width(1168.dp)) {
             Section(
                 title = "audio",
                 subtitle = "Titles play with audio in the language you pick here, where they have it. " +

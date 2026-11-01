@@ -27,23 +27,57 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 
 /**
- * The TV's safe area (the design system's tv focus): the part of the picture
- * every TV shows in full - some cut a few percent off its edges. Everything
- * that takes focus and all text stays inside it, 48 dp from the left and the
- * right edge and 27 dp from the top and the bottom (the TV's dp), measured to
- * a focused item's ring at its growth.
+ * The shell's layout, as chino-web's (the reference): no margin round the
+ * screen. The rail stands at the screen's left edge, from its top edge to its
+ * bottom edge, the top bar at its top edge, the logo in the corner between
+ * them; a page's content starts a [Gutter] in from the rail's line and the
+ * top bar's, and keeps one from the screen's right edge and, where it comes
+ * to an end, its bottom edge. Its lists scroll out to the right and bottom
+ * edges, and a row runs to the right edge ([runToScreenEnd]).
  *
- * It is laid out once for the whole app: the shell puts every screen inside
- * it ([SafeAreaScreen]), and the player and Zap put their controls, menus and
- * messages inside it. An item at a screen's edge keeps the room its ring and
- * growth need inside that: the rail's and the top bar's padding, a shelf's
- * room ([shelfRoom]). What only paints - a backdrop, the band behind the
- * player's controls, a scrim - reaches the screen's edges
- * ([bleedToScreenEdges], [paintToScreenEdges], [scrim]). The safe area sets
- * where resting content starts, not a clip: a page that scrolls - Home, a
- * title's page - scrolls out to the screen's end and bottom edges, its rows
- * run to the screen's edge ([runToScreenEnd]), and a focused item is
- * brought into view inside the safe area ([ScrollsInSafeArea]).
+ * What takes focus keeps the room its ring and growth need from every edge,
+ * so no ring is ever cut: the rail's items sit 16 dp inside the rail, the
+ * top bar's controls 16 dp inside the bar, a shelf's cards a gutter in with
+ * the shelf's room for the ring round them ([shelfRoom] - as wide as the
+ * gutter), and a focused item is brought into view clear of a list's edge
+ * ([ScrollsClearOfEdges]).
+ *
+ * The lengths are the TV's own, in this app's dp: the rail 80 wide, the top
+ * bar 64 high, as chino-web's are in its px. The pictures that fill the
+ * screen - the player, a trailer, Zap - keep the TV's [SafeArea] for their
+ * controls instead.
+ */
+object Shell {
+    /** The rail's width, its line at its right edge included (TvSideRail). */
+    val RailWidth: Dp = 80.dp
+
+    /** The top bar's height, its line at its bottom included (TvTopBar) -
+     *  the logo cell's in the rail too. */
+    val TopBarHeight: Dp = 64.dp
+
+    /** Between a page's content and the rail's line, the top bar's line, the
+     *  screen's right edge and its bottom edge: chino-web's 16. */
+    val Gutter: Dp = 16.dp
+
+    /** Where a page's content starts, beside the rail and below the top bar
+     *  a gutter in: a title's page, which has neither, starts its poster and
+     *  title there too, where Home's hero starts. */
+    val ContentStart: Dp = RailWidth + Gutter
+    val ContentTop: Dp = TopBarHeight + Gutter
+}
+
+/**
+ * The TV's safe area (the design system's tv focus): the part of the picture
+ * every TV shows in full - some cut a few percent off its edges - 48 dp from
+ * the left and the right edge and 27 dp from the top and the bottom (the TV's
+ * dp), measured to a focused item's ring at its growth.
+ *
+ * It holds where a picture fills the screen: the player, a trailer and Zap
+ * put their controls, menus and messages inside it ([SafeAreaOverlay]), while
+ * what only paints - the picture, the band behind the controls, a scrim -
+ * reaches the screen's edges ([paintToScreenEdges], [scrim]). The shell's
+ * pages do not use it: they are laid out edge to edge, as chino-web's
+ * ([Shell]).
  */
 object SafeArea {
     /** From the left and from the right edge. */
@@ -57,10 +91,9 @@ object SafeArea {
 }
 
 /**
- * A page of the shell, in [SafeAreaScreen]: its text in fg-2 on the canvas
- * the shell paints out to the screen's edges. Not clipped - as a tv-material
- * Surface would be - so a backdrop or a scrim on it reaches past the safe
- * area to the screen's edges.
+ * A page of the shell, in [ShellScreen]: its text in fg-2 on the canvas.
+ * Not clipped - as a tv-material Surface would be - so a scrim on it covers
+ * the whole screen.
  */
 @Composable
 fun ChinoPage(content: @Composable BoxScope.() -> Unit) {
@@ -69,15 +102,14 @@ fun ChinoPage(content: @Composable BoxScope.() -> Unit) {
     }
 }
 
-/** A screen of the shell, inside the safe area, on the canvas out to the
- *  screen's edges. */
+/** A screen of the shell: on the canvas, from edge to edge of the screen,
+ *  with no margin round it ([Shell]). */
 @Composable
-fun SafeAreaScreen(content: @Composable BoxScope.() -> Unit) {
+fun ShellScreen(content: @Composable BoxScope.() -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ChinoBg)
-            .padding(SafeArea.Insets),
+            .background(ChinoBg),
         content = content,
     )
 }
@@ -87,38 +119,6 @@ fun SafeAreaScreen(content: @Composable BoxScope.() -> Unit) {
 @Composable
 fun SafeAreaOverlay(content: @Composable BoxScope.() -> Unit) {
     Box(modifier = Modifier.fillMaxSize().padding(SafeArea.Insets), content = content)
-}
-
-/**
- * Lays out an item that only paints - a backdrop - out past the safe area it
- * sits at the edge of, to the screen's [start], [top], [end] and [bottom]
- * edges, where its parent stays where it was. An unbounded side (a scrolling
- * column's height) is left as it is.
- */
-fun Modifier.bleedToScreenEdges(
-    start: Boolean = true,
-    top: Boolean = true,
-    end: Boolean = true,
-    bottom: Boolean = true,
-): Modifier = layout { measurable, constraints ->
-    val h = SafeArea.Horizontal.roundToPx()
-    val v = SafeArea.Vertical.roundToPx()
-    val left = if (start) h else 0
-    val right = if (end) h else 0
-    val above = if (top && constraints.hasBoundedHeight) v else 0
-    val below = if (bottom && constraints.hasBoundedHeight) v else 0
-    val wide = if (constraints.hasBoundedWidth) left + right else 0
-    val placeable = measurable.measure(
-        constraints.copy(
-            minWidth = constraints.minWidth + wide,
-            maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + wide else constraints.maxWidth,
-            minHeight = constraints.minHeight + above + below,
-            maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + above + below else constraints.maxHeight,
-        ),
-    )
-    val width = (placeable.width - wide).coerceIn(constraints.minWidth, constraints.maxWidth)
-    val height = (placeable.height - above - below).coerceIn(constraints.minHeight, constraints.maxHeight)
-    layout(width, height) { placeable.place(if (wide > 0) -left else 0, -above) }
 }
 
 /** Paints [color] behind an item and out past the safe area it sits at the
@@ -153,20 +153,10 @@ fun Modifier.paintToScreenEdges(
 }
 
 /**
- * A page that scrolls, laid out past the safe area to the screen's end and
- * bottom edges: what scrolls by shows out to them, never cut at the safe
- * line. Put it before the scroll; give the scrolled content [SafeArea]'s
- * end and bottom as padding, so it rests where it did, inside the safe
- * area, and [ScrollsInSafeArea] around it, so a focused item is brought into
- * view inside it.
- */
-fun Modifier.scrollsToScreenEdges(): Modifier = bleedToScreenEdges(start = false, top = false)
-
-/**
- * A scrolling row on a page that scrolls to the screen's edges: laid out
- * [by] past its parent's end - the page's padding there and the safe
- * area's - so its cards run to the screen's edge. Its content padding keeps
- * [by] after its last card, so that one rests where it did ([shelfPadding]).
+ * A scrolling row laid out [by] past its parent's end - the gutter its page
+ * keeps there - so its cards run to the screen's edge. Its content padding
+ * keeps [by] after its last card, so that one rests where it did, inside the
+ * gutter ([shelfPadding]).
  */
 fun Modifier.runToScreenEnd(by: Dp): Modifier = layout { measurable, constraints ->
     if (!constraints.hasBoundedWidth) {
@@ -183,16 +173,15 @@ fun Modifier.runToScreenEnd(by: Dp): Modifier = layout { measurable, constraints
 }
 
 /**
- * Brings a focused item into view inside the safe area of a list that runs
- * past it: no nearer the container's end than [trailing] px nor its start
- * than [leading] px, scrolling as little as that takes. The item a remote
- * moves to, its ring and its growth stay inside the safe area; one that is
- * there already stays where it is. One rule for the item and for its ring's
- * room around it (the focus style asks for both), so the two never pull the
- * list two ways.
+ * Brings a focused item into view in a list no nearer the list's end than
+ * [trailing] px nor its start than [leading] px, scrolling as little as that
+ * takes: the item a remote moves to, its ring and its growth, stay clear of
+ * the screen's edge the list runs to. One that is there already stays where
+ * it is. One rule for the item and for its ring's room round it (the focus
+ * style asks for both), so the two never pull the list two ways.
  */
 @OptIn(ExperimentalFoundationApi::class)
-internal class SafeAreaBringIntoView(
+internal class ClearOfEdgesBringIntoView(
     private val leading: Float,
     private val trailing: Float,
 ) : BringIntoViewSpec {
@@ -212,17 +201,16 @@ internal class SafeAreaBringIntoView(
 /**
  * What scrolls in [content] - the page's own scroll, or a row of it -
  * brings a focused item into view [trailing] clear of its end and
- * [leading] clear of its start ([SafeAreaBringIntoView]): for a page that
- * scrolls to the screen's bottom edge the safe area's bottom, for a row
- * that runs to the screen's edge the safe area's side and the room a ring
- * needs.
+ * [leading] clear of its start ([ClearOfEdgesBringIntoView]): for a page
+ * that scrolls to the screen's bottom edge the gutter, for a row that runs
+ * to the screen's right edge the gutter and the room a ring needs.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ScrollsInSafeArea(trailing: Dp, leading: Dp = 0.dp, content: @Composable () -> Unit) {
+fun ScrollsClearOfEdges(trailing: Dp, leading: Dp = 0.dp, content: @Composable () -> Unit) {
     val density = LocalDensity.current
     val spec = remember(density, trailing, leading) {
-        with(density) { SafeAreaBringIntoView(leading.toPx(), trailing.toPx()) }
+        with(density) { ClearOfEdgesBringIntoView(leading.toPx(), trailing.toPx()) }
     }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
 }

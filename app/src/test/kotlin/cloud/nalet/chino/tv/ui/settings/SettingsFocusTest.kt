@@ -27,7 +27,7 @@ import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.feedback.BugReporter
 import cloud.nalet.chino.tv.feedback.FilePendingReportStore
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -40,8 +40,8 @@ import org.robolectric.annotation.Config
  * Settings with the remote: a language menu and the report dialog that close
  * - a pick, BACK - give the focus back to the row or the button that opened
  * them, never to the first item on the screen (the rail's Home, where the
- * next OK would leave Settings). The screen as the shell hosts it, in the
- * safe area.
+ * next OK would leave Settings). The screen as the shell hosts it, edge to
+ * edge.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w960dp-h540dp-xhdpi")
@@ -69,7 +69,7 @@ class SettingsFocusTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     SettingsScreen(
                         viewModel = viewModel,
                         onSwitchAccount = {},

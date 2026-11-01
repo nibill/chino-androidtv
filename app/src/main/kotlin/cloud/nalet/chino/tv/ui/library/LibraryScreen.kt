@@ -84,8 +84,8 @@ import cloud.nalet.chino.tv.ui.theme.focusStyle
 import cloud.nalet.chino.tv.ui.theme.rememberItemFocus
 import cloud.nalet.chino.tv.ui.theme.shelfPadding
 import cloud.nalet.chino.tv.ui.theme.shelfRoom
-import cloud.nalet.chino.tv.ui.theme.SafeArea
-import cloud.nalet.chino.tv.ui.theme.ScrollsInSafeArea
+import cloud.nalet.chino.tv.ui.theme.Shell
+import cloud.nalet.chino.tv.ui.theme.ScrollsClearOfEdges
 import cloud.nalet.chino.tv.ui.theme.runToScreenEnd
 import cloud.nalet.chino.tv.ui.theme.ReturnFocus
 import cloud.nalet.chino.tv.ui.theme.rememberReturnFocus
@@ -93,7 +93,6 @@ import cloud.nalet.chino.tv.ui.theme.focusFirstOf
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.input.pointer.pointerInput
-import cloud.nalet.chino.tv.ui.theme.scrollsToScreenEdges
 import cloud.nalet.chino.tv.ui.theme.LoadError
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -322,16 +321,14 @@ internal fun LibraryContent(
             // Outer column scrolls so DPAD_DOWN can walk past the visible
             // portion. The rail + TopBar stay fixed; only the
             // hero / chips / shelves move under the camera - out to the
-            // screen's end and bottom edges, the shelves running to the
-            // screen's edge; what rests stays inside the safe area, and a
-            // focused card is brought into view inside it.
-            ScrollsInSafeArea(trailing = SafeArea.Vertical) {
+            // screen's right and bottom edges, the shelves running to the
+            // right edge; what rests keeps the shell's gutter, and a focused
+            // card is brought into view a gutter clear of the bottom edge.
+            ScrollsClearOfEdges(trailing = Shell.Gutter) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .scrollsToScreenEdges()
-                    .verticalScroll(pageScroll)
-                    .padding(end = SafeArea.Horizontal, bottom = SafeArea.Vertical),
+                    .verticalScroll(pageScroll),
             ) {
         // Crossfade so hero swaps every 20s glide between backdrops instead of
         // hard-cutting — feels much less jarring when you're not actively
@@ -356,7 +353,7 @@ internal fun LibraryContent(
                 )
             }
         }
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Shell.Gutter, vertical = Shell.Gutter)) {
             // No filter-chip row on Home — chino-web's home is hero + shelves
             // only; Movies/Series filtering lives on the dedicated browse
             // pages (rail Film/Tv). Keeps the home identical to web.
@@ -578,21 +575,25 @@ internal fun TvSideRail(
     val anyActive = homeActive || activeType == "movie" || activeType == "series" || settingsActive || zapActive || watchlistActive
     // Flat canvas rail (#0D1117) with a 1dp #30363D right-edge divider and a
     // logo-cell bottom divider — the chino-web / mobile SideRail (NOT an
-    // elevated #161B22 surface). 80dp wide incl. the divider. One group for
-    // the remote: coming into it, the focus lands on the screen's own item,
-    // never on the one nearest where it came from.
+    // elevated #161B22 surface). 80dp wide incl. the divider, at the
+    // screen's left edge from its top edge to its bottom edge, as chino-web's
+    // sidebar ([Shell]); its items 16 dp inside it, room for a focused one's
+    // growth and ring. One group for the remote: coming into it, the focus
+    // lands on the screen's own item, never on the one nearest where it came
+    // from.
     androidx.compose.foundation.layout.Row(
         modifier = Modifier
-            .width(80.dp)
+            .width(Shell.RailWidth)
             .fillMaxHeight()
             .background(ChinoBg)
             .focusProperties { enter = { if (anyActive) activeFocus else FocusRequester.Default } }
             .focusGroup(),
     ) {
         androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Logo cell: 64dp tall (= topbar height) with a bottom divider so
-            // it meets the topbar's bottom divider at the L corner.
-            androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            // Logo cell: 64dp tall (= topbar height), in the screen's corner,
+            // with a bottom divider so it meets the topbar's bottom divider
+            // at the L corner.
+            androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth().height(Shell.TopBarHeight)) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     LogoMark(sizeDp = 36)
                 }
@@ -688,15 +689,17 @@ internal fun TvTopBar(
 ) {
     // Flat canvas top bar (#0D1117) with a 1dp #30363D bottom divider —
     // matches the mobile/web Header (not an elevated #161B22 surface). The
-    // 63dp row + 1dp divider = 64dp, aligning with the rail's logo cell.
+    // 63dp row + 1dp divider = 64dp, aligning with the rail's logo cell; at
+    // the screen's top edge and out to its right edge, as chino-web's header
+    // ([Shell]), the search field, the bell and the avatar 16 dp inside it.
     androidx.compose.foundation.layout.Column(
         modifier = Modifier.fillMaxWidth().background(ChinoBg),
     ) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(63.dp)
-                .padding(horizontal = 16.dp),
+                .height(Shell.TopBarHeight - 1.dp)
+                .padding(horizontal = Shell.Gutter),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Search fills the remaining width, capped at 576dp (web's
@@ -1147,10 +1150,12 @@ private fun HeroBanner(
     // Black card with the backdrop anchored RIGHT (60% wide, cropped) and a
     // left black-to-transparent gradient over the image — the chino-web /
     // tablet HeroSection layout (CDP-verified in the mobile HeroContentWide).
+    // A gutter from the rail's line, the top bar's and the screen's right
+    // edge, as chino-web's hero card.
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(start = Shell.Gutter, end = Shell.Gutter, top = Shell.Gutter, bottom = 8.dp)
             .height(460.dp)
             .clip(RectangleShape)
             .background(Color.Black)
@@ -1368,14 +1373,15 @@ internal fun ItemGrid(
 }
 
 /** How far Home's shelves run past their column's end to the screen's
- *  edge: the column's own padding there and the safe area's. */
-private val ShelfRun = 16.dp + SafeArea.Horizontal
+ *  edge: the column's gutter there. */
+private val ShelfRun = Shell.Gutter
 
-/** A Home shelf brings a focused card into view inside the safe area -
- *  [ShelfRun]'s safe part and the room a ring needs clear of its end. */
+/** A Home shelf brings a focused card into view clear of the screen's edge
+ *  by the gutter - its room for the ring past the edge ([shelfRoom]) and the
+ *  gutter within it. */
 @Composable
 private fun ShelfToScreenEdge(content: @Composable () -> Unit) =
-    ScrollsInSafeArea(trailing = SafeArea.Horizontal + ChinoFocus.Room, content = content)
+    ScrollsClearOfEdges(trailing = Shell.Gutter + ChinoFocus.Room, content = content)
 
 @Composable
 internal fun SeeAllCard(onClick: () -> Unit, modifier: Modifier = Modifier) {

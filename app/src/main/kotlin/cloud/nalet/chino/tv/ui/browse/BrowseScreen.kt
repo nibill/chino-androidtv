@@ -16,6 +16,8 @@ import cloud.nalet.chino.tv.ui.theme.shelfPadding
 import cloud.nalet.chino.tv.ui.theme.shelfRoom
 import cloud.nalet.chino.tv.ui.theme.LoadError
 import cloud.nalet.chino.tv.ui.theme.ReturnFocus
+import cloud.nalet.chino.tv.ui.theme.Shell
+import cloud.nalet.chino.tv.ui.theme.runToScreenEnd
 import cloud.nalet.chino.tv.ui.theme.rememberReturnFocus
 import cloud.nalet.chino.tv.ui.theme.requestSoon
 import androidx.compose.ui.focus.FocusRequester
@@ -193,11 +195,14 @@ private fun BrowseGrid(
             last >= (gridState.layoutInfo.totalItemsCount - 12)
         }.collect { nearEnd -> if (nearEnd && s.hasMore && !s.loadingMore) onLoadMore() }
     }
+    // From the rail's line and the top bar's to the screen's right and bottom
+    // edges, the titles that scroll by shown to them; the page's content a
+    // gutter in from each, as chino-web's.
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Fixed(6),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(Shell.Gutter),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -272,15 +277,17 @@ private fun FilterBar(
     firstChip: FocusRequester? = null,
 ) {
     // Chip rows: their chips far enough apart for a focused one's growth and
-    // ring, and room at the rows' ends (shelfRoom).
+    // ring, and room at the rows' ends (shelfRoom); each runs on to the
+    // screen's right edge, as Home's shelves do, its last chip resting a
+    // gutter in.
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // Genre row — "all genres" clears the genre; tapping the active genre
         // clears it. The chips are in the mono face: their own words
         // lowercase, the server's genre names in their case.
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
-            contentPadding = shelfPadding(),
-            modifier = Modifier.shelfRoom(),
+            contentPadding = shelfPadding(end = Shell.Gutter),
+            modifier = Modifier.runToScreenEnd(Shell.Gutter).shelfRoom().fillMaxWidth(),
         ) {
             item("g-all") {
                 FilterChip(
@@ -298,8 +305,8 @@ private fun FilterBar(
         // Decade + rating row.
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
-            contentPadding = shelfPadding(),
-            modifier = Modifier.shelfRoom(),
+            contentPadding = shelfPadding(end = Shell.Gutter),
+            modifier = Modifier.runToScreenEnd(Shell.Gutter).shelfRoom().fillMaxWidth(),
         ) {
             items(BROWSE_DECADES, key = { "d:${it.label}" }) { d ->
                 FilterChip(d.label, filters.decade == d) {
@@ -315,8 +322,8 @@ private fun FilterBar(
         // Sort row.
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
-            contentPadding = shelfPadding(),
-            modifier = Modifier.shelfRoom(),
+            contentPadding = shelfPadding(end = Shell.Gutter),
+            modifier = Modifier.runToScreenEnd(Shell.Gutter).shelfRoom().fillMaxWidth(),
         ) {
             items(BROWSE_SORTS, key = { "s:${it.second}" }) { (label, value) ->
                 FilterChip(label, filters.sort == value) { onChange(filters.copy(sort = value)) }

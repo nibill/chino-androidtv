@@ -16,6 +16,8 @@ import cloud.nalet.chino.tv.ui.theme.focusStyle
 import cloud.nalet.chino.tv.ui.theme.rememberItemFocus
 import cloud.nalet.chino.tv.ui.theme.shelfPadding
 import cloud.nalet.chino.tv.ui.theme.shelfRoom
+import cloud.nalet.chino.tv.ui.theme.Shell
+import cloud.nalet.chino.tv.ui.theme.runToScreenEnd
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -193,7 +195,11 @@ internal fun SearchContent(
                         )
                     },
                 )
-                Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 24.dp)) {
+                // A gutter from the rail's line and the top bar's; the results
+                // run on to the screen's right and bottom edges, their end
+                // and bottom gutter inside them (ResultsGrid), the messages
+                // keep it on every side (SearchMessage).
+                Column(modifier = Modifier.fillMaxSize().padding(start = Shell.Gutter, top = Shell.Gutter)) {
                     when (val s = state) {
                         SearchUiState.Empty -> SearchMessage(
                             headline = "Search the library",
@@ -340,7 +346,7 @@ private fun ResultsGrid(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(end = Shell.Gutter, bottom = Shell.Gutter),
     ) {
         if (hasPeople) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -409,11 +415,13 @@ private fun PeopleSection(
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
         )
-        // Person chips: 12 dp between a focused one's grown ring and the next.
+        // Person chips: 12 dp between a focused one's grown ring and the next;
+        // the row runs on to the screen's right edge, its last chip resting
+        // a gutter in.
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
-            contentPadding = shelfPadding(end = 32.dp, top = 2.dp, bottom = 2.dp),
-            modifier = Modifier.shelfRoom().fillMaxWidth(),
+            contentPadding = shelfPadding(end = 32.dp + Shell.Gutter, top = 2.dp, bottom = 2.dp),
+            modifier = Modifier.runToScreenEnd(Shell.Gutter).shelfRoom().fillMaxWidth(),
         ) {
             lazyItemsIndexed(
                 people,
@@ -551,7 +559,8 @@ private fun SearchMessage(
     isError: Boolean = false,
     below: @Composable () -> Unit = {},
 ) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    // Centred in the results' place, a gutter inside it on every side.
+    Box(modifier = Modifier.fillMaxSize().padding(end = Shell.Gutter, bottom = Shell.Gutter), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),

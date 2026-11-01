@@ -28,7 +28,7 @@ import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.feedback.BugReporter
 import cloud.nalet.chino.tv.feedback.FilePendingReportStore
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,13 +37,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Settings scrolls as Home and a title's page do (the design system's tv
- * focus: the safe area sets where resting content starts, not a clip): out
- * to the screen's end and bottom edges, so what scrolls by shows down to the
- * bottom edge, never cut at the safe line; the control the remote moves to,
- * its ring at its growth, is brought into view inside the safe area. In the
- * TV's dp: 960 × 540, 2 px each; the safe area 48 dp at the sides, 27 at the
- * top and bottom.
+ * Settings scrolls as Home and a title's page do, with no margin round the
+ * screen (chino-web's layout): out to the screen's right and bottom edges,
+ * so what scrolls by shows down to the bottom edge; the control the remote
+ * moves to, its ring at its growth, is brought into view below the top bar
+ * and a gutter clear of the bottom and right edges. In the TV's dp: 960 ×
+ * 540, 2 px each; the top bar 48 high, the gutter 12.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w960dp-h540dp-xhdpi")
@@ -69,7 +68,7 @@ class SettingsEdgesTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen {
+                ShellScreen {
                     SettingsScreen(
                         viewModel = viewModel,
                         onSwitchAccount = {},
@@ -103,28 +102,28 @@ class SettingsEdgesTest {
     }
 
     @Test
-    fun `the page scrolls to the screen's bottom edge, never cut at the safe line, the focused control inside the safe area`() {
+    fun `the page scrolls to the screen's bottom edge, the focused control a gutter clear of it`() {
         show()
         val page = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .fetchSemanticsNode().boundsInRoot.let(::dp)
         assertTrue("the page ends at ${page.right}, ${page.bottom} dp", page.right >= 959.5f && page.bottom >= 539.5f)
         // Down the page with the remote, to its last control: every focused
-        // one inside the safe area, and what scrolls by below it shown past
-        // the safe line, down to the bottom edge - where a focused control
-        // brings its setting's text into view, that text rests at the safe
-        // line and the next setting's start shows below it.
+        // one below the top bar and a gutter clear of the edges, and what
+        // scrolls by below it shown in the gutter, down to the bottom edge -
+        // where a focused control brings its setting's text into view, that
+        // text rests at the gutter and the next setting's start shows below.
         compose.onAllNodes(hasText("Language", substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus))[0]
             .performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitForIdle()
         var crossed = false
         repeat(8) {
             val r = focusedReach()
-            assertTrue("focused control reaches $r", r.bottom <= 513.5f && r.top >= 26.5f && r.right <= 912.5f)
+            assertTrue("focused control reaches $r", r.bottom <= 528.5f && r.top >= 47.5f && r.right <= 948.5f)
             val shown = compose.onAllNodes(hasText("", substring = true)).fetchSemanticsNodes().map { dp(it.boundsInRoot) }
-            if (shown.any { it.top < 539.5f && it.bottom > 514f && it.bottom <= 540.5f }) crossed = true
+            if (shown.any { it.top < 539.5f && it.bottom > 529f && it.bottom <= 540.5f }) crossed = true
             press(Key.DirectionDown)
         }
-        assertTrue("nothing shown past the safe line while scrolled", crossed)
+        assertTrue("nothing shown in the bottom gutter while scrolled", crossed)
         compose.onNode(isFocused()).assert(hasText("report a problem") and hasClickAction())
     }
 

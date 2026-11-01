@@ -82,7 +82,7 @@ fun AccountPickerScreen(
     var pendingRemoval by remember { mutableStateOf<Account?>(null) }
     ChinoPage {
         Column(
-            // Inside the safe area the shell lays it out in.
+            // Centred on the screen, which the shell lays out edge to edge.
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(32.dp),

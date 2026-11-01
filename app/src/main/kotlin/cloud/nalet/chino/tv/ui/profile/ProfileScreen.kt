@@ -54,6 +54,7 @@ import cloud.nalet.chino.tv.ui.theme.ChinoBorder
 import cloud.nalet.chino.tv.ui.theme.ChinoMuted
 import cloud.nalet.chino.tv.ui.theme.ChinoSurface
 import cloud.nalet.chino.tv.ui.theme.LoadError
+import cloud.nalet.chino.tv.ui.theme.Shell
 import coil.compose.AsyncImage
 
 /**
@@ -129,9 +130,12 @@ private fun ReadyContent(
     activeAccount: Account?,
     onItemSelected: (String) -> Unit,
 ) {
+    // From the rail's line and the top bar's to the screen's right and bottom
+    // edges; the account and its history a gutter in from each, as
+    // chino-web's page.
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(Shell.Gutter),
     ) {
         item {
             Text(

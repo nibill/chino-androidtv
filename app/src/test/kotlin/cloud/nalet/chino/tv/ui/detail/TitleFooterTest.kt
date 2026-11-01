@@ -30,7 +30,7 @@ import cloud.nalet.chino.tv.data.model.ItemsPage
 import cloud.nalet.chino.tv.data.model.Subtitle
 import cloud.nalet.chino.tv.data.telemetry.Telemetry
 import cloud.nalet.chino.tv.ui.theme.ChinoTvTheme
-import cloud.nalet.chino.tv.ui.theme.SafeAreaScreen
+import cloud.nalet.chino.tv.ui.theme.ShellScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -102,7 +102,7 @@ class TitleFooterTest {
         }
     } as ChinoApi
 
-    /** The page of [id] as the shell shows it, in the safe area. */
+    /** The page of [id] as the shell shows it, edge to edge. */
     private fun show(id: String) {
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         val vm = DetailViewModel(
@@ -118,7 +118,7 @@ class TitleFooterTest {
         compose.setContent {
             ChinoTvTheme {
                 Remote()
-                SafeAreaScreen { DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
+                ShellScreen { DetailScreen(viewModel = vm, onPlay = { _, _ -> }) }
             }
         }
         compose.waitUntil(5_000) { vm.state.value is DetailUiState.Ready }

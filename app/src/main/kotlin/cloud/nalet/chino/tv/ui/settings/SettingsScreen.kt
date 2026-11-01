@@ -55,9 +55,8 @@ import cloud.nalet.chino.tv.ui.theme.inReadingOrder
 import cloud.nalet.chino.tv.ui.theme.readingOrderGroup
 import cloud.nalet.chino.tv.ui.theme.rememberReturnFocus
 import cloud.nalet.chino.tv.ui.theme.requestSoon
-import cloud.nalet.chino.tv.ui.theme.SafeArea
-import cloud.nalet.chino.tv.ui.theme.ScrollsInSafeArea
-import cloud.nalet.chino.tv.ui.theme.scrollsToScreenEdges
+import cloud.nalet.chino.tv.ui.theme.ScrollsClearOfEdges
+import cloud.nalet.chino.tv.ui.theme.Shell
 import cloud.nalet.chino.tv.ui.theme.LocalFocusAlong
 import cloud.nalet.chino.tv.ui.theme.PageTop
 import cloud.nalet.chino.tv.ui.theme.PartBottom
@@ -180,25 +179,18 @@ fun SettingsScreen(
                     activeAccount = activeAccount,
                     onAccountClick = onAccountClick,
                 )
-                // The page scrolls out to the screen's end and bottom edges,
+                // The page scrolls out to the screen's right and bottom edges,
                 // as Home and a title's page do: what scrolls by shows out to
-                // them, never cut at the safe line; what rests stays inside
-                // the safe area, and a focused control is brought into view
-                // inside it.
-                ScrollsInSafeArea(trailing = SafeArea.Vertical) {
+                // them; what rests keeps the shell's gutter, and a focused
+                // control is brought into view a gutter clear of the bottom.
+                ScrollsClearOfEdges(trailing = Shell.Gutter) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .readingOrderGroup(order)
-                        .scrollsToScreenEdges()
                         .verticalScroll(rememberScrollState())
                         .pageTop(pageTop)
-                        .padding(
-                            start = 24.dp,
-                            end = 24.dp + SafeArea.Horizontal,
-                            top = 24.dp,
-                            bottom = 24.dp + SafeArea.Vertical,
-                        ),
+                        .padding(Shell.Gutter),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
             Text(
