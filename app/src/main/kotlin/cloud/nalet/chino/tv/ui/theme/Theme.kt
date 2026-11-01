@@ -130,7 +130,10 @@ fun ChinoTvTheme(content: @Composable () -> Unit) {
             // nothing else: no overlay of a clickable's own on a focused or
             // pressed item.
             LocalIndication provides NoIndication,
-            content = content,
-        )
+        ) {
+            // A list brings its focused item into view at the TV's pivot, and
+            // there it stays, never a pixel to and fro (SafeArea.kt).
+            ScrollsSettled(content)
+        }
     }
 }

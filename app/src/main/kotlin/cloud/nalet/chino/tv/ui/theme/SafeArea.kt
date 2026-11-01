@@ -1,5 +1,6 @@
 package cloud.nalet.chino.tv.ui.theme
 
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
+import kotlin.math.abs
 
 /**
  * The shell's layout, as chino-web's (the reference): no margin round the
@@ -40,7 +42,8 @@ import androidx.tv.material3.MaterialTheme
  * top bar's controls 16 dp inside the bar, a shelf's cards a gutter in with
  * the shelf's room for the ring round them ([shelfRoom] - as wide as the
  * gutter), and a focused item is brought into view clear of a list's edge
- * ([ScrollsClearOfEdges]).
+ * ([ScrollsClearOfEdges]) - in a list that sets no way of its own at the
+ * TV's pivot, 30 % down it, settled to the pixel ([SettledBringIntoView]).
  *
  * The lengths are the TV's own, in this app's dp: the rail 80 wide, the top
  * bar 64 high, as chino-web's are in its px. The pictures that fill the
@@ -196,6 +199,36 @@ internal class ClearOfEdgesBringIntoView(
             else -> 0f
         }
     }
+}
+
+/**
+ * The TV's own way of bringing a focused item into view - Compose's pivot on
+ * a TV, the item 30 % down a list - settled to the pixel. A list scrolls by
+ * whole pixels, and the pivot of a focused item - grown by the focus style,
+ * its ring round it - lies between two of them, so the list was scrolled a
+ * pixel one way and back for as long as the item had the focus: a Movies
+ * grid's focused card shook by a pixel and the screen was drawn anew every
+ * frame. Less than a pixel away is there. ChinoTvTheme puts it round the
+ * whole app; [ScrollsClearOfEdges] has its own.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+internal class SettledBringIntoView(private val spec: BringIntoViewSpec) : BringIntoViewSpec {
+    override val scrollAnimationSpec: AnimationSpec<Float> get() = spec.scrollAnimationSpec
+
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val distance = spec.calculateScrollDistance(offset, size, containerSize)
+        return if (abs(distance) < 1f) 0f else distance
+    }
+}
+
+/** What [content] scrolls, at the platform's own pivot, settled to the
+ *  pixel ([SettledBringIntoView]). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun ScrollsSettled(content: @Composable () -> Unit) {
+    val platform = LocalBringIntoViewSpec.current
+    val spec = remember(platform) { SettledBringIntoView(platform) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
 }
 
 /**

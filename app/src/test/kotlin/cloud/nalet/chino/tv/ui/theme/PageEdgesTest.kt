@@ -263,6 +263,38 @@ class PageEdgesTest {
     }
 
     @Test
+    fun `on a TV the card the remote moves to on Movies comes to rest at the pivot, whole and a gutter clear of the edges, down the grid`() {
+        movies()
+        // Before, the grid chased the TV's pivot a pixel to and fro for as
+        // long as a card had the focus, and the page never came to rest.
+        compose.onNode(androidx.compose.ui.test.hasText("Harbour Light 1") and SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick))
+            .performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        repeat(4) {
+            val r = focusedReach()
+            assertTrue("focused card reaches $r", r.right <= 948.5f && r.bottom <= 528.5f && r.top >= 47.5f && r.left >= 60f)
+            press(Key.DirectionDown)
+        }
+    }
+
+    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+    @Test
+    fun `a pivot less than a pixel away is where the item is, one farther is scrolled to`() {
+        val pivot = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+                offset - 0.3f * containerSize
+        }
+        val settled = SettledBringIntoView(pivot)
+        assertEquals(0f, settled.calculateScrollDistance(300.4f, 100f, 1000f), 0f)
+        assertEquals(0f, settled.calculateScrollDistance(299.2f, 100f, 1000f), 0f)
+        assertEquals(12.5f, settled.calculateScrollDistance(312.5f, 100f, 1000f), 0.001f)
+        assertEquals(-40f, settled.calculateScrollDistance(260f, 100f, 1000f), 0.001f)
+        assertEquals(pivot.scrollAnimationSpec, settled.scrollAnimationSpec)
+    }
+
+    @Test
     fun `a person's titles scroll to the screen's bottom edge, resting a gutter in`() {
         tv()
         val api = server()
