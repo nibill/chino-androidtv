@@ -61,6 +61,11 @@ sealed interface BrowseUiState {
         val streamToken: String,
         val loadingMore: Boolean,
         val hasMore: Boolean,
+        /** The first page for [filters] on its way after a chip changed
+         *  them: the page stays - its title and its chips, already as they
+         *  now are, with the focus on the chip just pressed - and its grid
+         *  says it is loading. */
+        val reloading: Boolean = false,
     ) : BrowseUiState
     /** What failed, for the error screen: what it says, and the reason. */
     data class Error(val failure: LoadFailure) : BrowseUiState
@@ -126,7 +131,14 @@ class BrowseViewModel(
 
     private fun reload(f: BrowseFilters) {
         loadJob?.cancel()
-        _state.value = BrowseUiState.Loading
+        // A chip's change keeps the page on the screen, its grid emptied and
+        // loading: swapping the page for the loading screen took the pressed
+        // chip, and the focus with it, off the screen, and the platform gave
+        // the focus to the rail. The first load and a try again, with no page
+        // yet, show the loading screen.
+        _state.value = (_state.value as? BrowseUiState.Ready)
+            ?.copy(items = emptyList(), filters = f, loadingMore = false, hasMore = false, reloading = true)
+            ?: BrowseUiState.Loading
         val p = pagerFor(f)
         pager = p
         loadJob = viewModelScope.launch {

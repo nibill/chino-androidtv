@@ -217,13 +217,25 @@ private fun BrowseGrid(
                 modifier = Modifier.padding(bottom = 16.dp),
             )
         }
+        // The chips stay while what one of them asked for loads: the focus on
+        // the chip pressed, its row where it was scrolled to.
         item(span = { GridItemSpan(maxLineSpan) }) {
             FilterBar(filters = s.filters, genres = s.genres, onChange = onFilters, firstChip = firstChip)
         }
-        if (s.items.isEmpty()) {
+        val plural = if (type == "movie") "movies" else "shows"
+        if (s.reloading) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    text = "No ${if (type == "movie") "movies" else "shows"} match the current filters.",
+                    text = "Loading $plural…",
+                    color = ChinoMuted,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(vertical = 24.dp),
+                )
+            }
+        } else if (s.items.isEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = "No $plural match the current filters.",
                     color = ChinoMuted,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(vertical = 24.dp),
@@ -256,14 +268,15 @@ private fun BrowseGrid(
                 },
             )
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            val plural = if (type == "movie") "movies" else "shows"
-            Text(
-                text = if (s.hasMore) "Loading more…" else "You've reached the end — ${s.items.size} $plural.",
-                color = ChinoMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 16.dp),
-            )
+        if (!s.reloading) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = if (s.hasMore) "Loading more…" else "You've reached the end — ${s.items.size} $plural.",
+                    color = ChinoMuted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+            }
         }
     }
 }
@@ -320,23 +333,33 @@ private fun FilterBar(
             }
         }
         // Sort row.
+        val lastSort = remember { FocusRequester() }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(ChinoFocus.ControlGap),
             contentPadding = shelfPadding(end = Shell.Gutter),
             modifier = Modifier.runToScreenEnd(Shell.Gutter).shelfRoom().fillMaxWidth(),
         ) {
             items(BROWSE_SORTS, key = { "s:${it.second}" }) { (label, value) ->
-                FilterChip(label, filters.sort == value) { onChange(filters.copy(sort = value)) }
+                FilterChip(
+                    label,
+                    filters.sort == value,
+                    modifier = if (value == BROWSE_SORTS.last().second) Modifier.focusRequester(lastSort) else Modifier,
+                ) { onChange(filters.copy(sort = value)) }
             }
             // "clear filters" — chino-web BrowseFilters parity: one action
             // resets genre / decade / rating / sort back to defaults instead
             // of toggling each chip off individually. Rendered at the END of
             // the filter rows ONLY while at least one axis deviates from the
             // defaults (data-class equality covers all four), styled as an
-            // inactive chip to match web's muted-text affordance.
+            // inactive chip to match web's muted-text affordance. It goes
+            // with what it clears: the focus first to the chip before it,
+            // never left on nothing for the platform to give to the rail.
             if (filters != BrowseFilters()) {
                 item("clear-filters") {
-                    FilterChip("clear filters", active = false) { onChange(BrowseFilters()) }
+                    FilterChip("clear filters", active = false) {
+                        runCatching { lastSort.requestFocus() }
+                        onChange(BrowseFilters())
+                    }
                 }
             }
         }
