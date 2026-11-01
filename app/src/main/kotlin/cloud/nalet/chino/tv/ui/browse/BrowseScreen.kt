@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import cloud.nalet.chino.tv.data.auth.Account
@@ -444,16 +445,19 @@ internal fun PosterGridCard(
                     )
                 }
                 val ratingText = item.rating?.let { String.format("%.1f", it) }
-                if (item.year != null || ratingText != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        item.year?.let { Text(it.toString(), color = meta, fontSize = 14.sp) }
-                        ratingText?.let {
-                            if (item.year != null) Text("•", color = meta, fontSize = 14.sp)
-                            Text(it, color = ChinoAccent, fontSize = 14.sp)
-                        }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    // The line on every card, empty without a year or a
+                    // rating, so the cards of a row are as tall.
+                    if (item.year == null && ratingText == null) {
+                        cloud.nalet.chino.tv.ui.library.EmptyMetaLine(LocalTextStyle.current.copy(fontSize = 14.sp))
+                    }
+                    item.year?.let { Text(it.toString(), color = meta, fontSize = 14.sp) }
+                    ratingText?.let {
+                        if (item.year != null) Text("•", color = meta, fontSize = 14.sp)
+                        Text(it, color = ChinoAccent, fontSize = 14.sp)
                     }
                 }
                 credit?.let {
@@ -465,18 +469,12 @@ internal fun PosterGridCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // Long-press discoverability hint — only on the focused card and
-                // only where the menu is wired (Browse), so the hold-OK actions
-                // menu is findable at 10ft (web MediaCard hover overflow).
-                if (focused && onLongPress != null) {
-                    Text(
-                        text = cloud.nalet.chino.tv.ui.library.cardMenuHint(item),
-                        color = meta,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                // Long-press discoverability hint — where the menu is wired
+                // (Browse), on the focused card, in the line every card of the
+                // grid keeps for it - so the hold-OK actions menu is findable
+                // at 10ft (web MediaCard hover overflow) and the focused card
+                // as tall as its neighbours.
+                if (onLongPress != null) cloud.nalet.chino.tv.ui.library.CardHint(focused)
             }
         }
     }

@@ -1,5 +1,6 @@
 package cloud.nalet.chino.tv.ui.library
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import cloud.nalet.chino.tv.ui.theme.ChinoSurfaceHi
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -1069,7 +1071,10 @@ private fun ContinueWatchingCard(
                             )
                         }
                     }
-                } else if (!isEpisode && (item.year != null || item.rating != null)) {
+                } else if (isEpisode || (item.year == null && item.rating == null)) {
+                    // Nothing to show on the line, which stays all the same.
+                    EmptyMetaLine(MaterialTheme.typography.bodySmall)
+                } else {
                     // Movie meta line — "<year> • <rating>" with the rating in
                     // accent blue, mirroring web's MediaCard year·rating row
                     // (and the PosterCard meta strip below the home shelves).
@@ -1096,20 +1101,11 @@ private fun ContinueWatchingCard(
                         }
                     }
                 }
-                // Long-press discoverability hint — only on the focused card,
-                // so the rest of the shelf stays clean. Wording matches the
-                // available actions: the in-progress shelf can remove; both
-                // shelves expose the watched toggle.
-                if (focused) {
-                    Text(
-                        // Its menu holds play and the watched toggle at least.
-                        text = CARD_OPTIONS_HINT,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ChinoFocus.text(ChinoMuted, focused),
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
+                // Long-press discoverability hint — on the focused card, in
+                // the line every card keeps for it, so the rest of the shelf
+                // stays clean and as tall. Its menu holds play and the
+                // watched toggle at least; the in-progress shelf's can remove.
+                CardHint(focused)
             }
         }
     }
@@ -1479,6 +1475,7 @@ internal fun PosterCard(
                 androidx.compose.foundation.layout.Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    if (item.year == null && item.rating == null) EmptyMetaLine(MaterialTheme.typography.bodySmall)
                     item.year?.let { y ->
                         Text(
                             text = y.toString(),
@@ -1501,18 +1498,11 @@ internal fun PosterCard(
                         )
                     }
                 }
-                // Long-press discoverability hint — only on the focused card so
-                // the hold-OK actions menu is findable at 10ft (web MediaCard
-                // surfaces a hover overflow button).
-                if (focused) {
-                    Text(
-                        text = cardMenuHint(item),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ChinoFocus.text(ChinoMuted, focused),
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
+                // Long-press discoverability hint — on the focused card, in
+                // the line every card keeps for it, so the hold-OK actions
+                // menu is findable at 10ft (web MediaCard surfaces a hover
+                // overflow button).
+                CardHint(focused)
             }
         }
     }
@@ -1536,14 +1526,40 @@ internal data class CardAction(
     val onClick: () -> Unit,
 )
 
-/** What a focused card says of its menu: its options where it holds more
- *  than the watched toggle (a movie's play), else that toggle. */
+/** What a focused card says of its menu, on every card: holding OK opens its
+ *  options - its play, the watched toggle, on continue watching its removal,
+ *  as the card has them. Short enough to be whole on the narrowest card, a
+ *  Movies or Shows grid's ("Hold OK to mark watched" was cut there). */
 internal const val CARD_OPTIONS_HINT = "Hold OK for options"
 
-internal fun cardMenuHint(item: Item): String = when {
-    item.kind == "movie" -> CARD_OPTIONS_HINT
-    item.watchedAt != null -> "Hold OK to mark unwatched"
-    else -> "Hold OK to mark watched"
+/**
+ * A card's line for [CARD_OPTIONS_HINT], under its title and its meta: the
+ * hint on the focused card, the line empty on the others - every card of a
+ * row keeps it, so the focused card is as tall as the cards beside it and
+ * nothing under the row moves as the focus comes and goes. One line in the
+ * card's smallest text, whole at the TV's usual text size; where the text is
+ * set larger it ends in "…" rather than take a second line.
+ */
+@Composable
+internal fun CardHint(focused: Boolean) {
+    Text(
+        text = CARD_OPTIONS_HINT,
+        style = MaterialTheme.typography.bodySmall,
+        color = ChinoFocus.text(ChinoMuted, focused),
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        modifier = Modifier
+            .alpha(if (focused) 1f else 0f)
+            // Said, as shown, on the focused card only.
+            .then(if (focused) Modifier else Modifier.clearAndSetSemantics { }),
+    )
+}
+
+/** A card's meta line - its year and rating - with nothing to show: the line
+ *  still there, so the card is as tall as the others of its row. */
+@Composable
+internal fun EmptyMetaLine(style: androidx.compose.ui.text.TextStyle) {
+    Text(text = "", style = style, modifier = Modifier.clearAndSetSemantics { })
 }
 
 /** A card menu's way off Continue watching (chino-web's card menu). */

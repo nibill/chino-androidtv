@@ -57,8 +57,6 @@ class CardMenuTest {
         assertEquals(listOf("watched"), cardActions(show, onPlay = {}, watched = true) {}.map { it.label })
         // A surface without a player to open: the toggle alone.
         assertEquals(listOf("mark as watched"), cardActions(movie, onPlay = null, watched = false) {}.map { it.label })
-        assertEquals(CARD_OPTIONS_HINT, cardMenuHint(movie))
-        assertEquals("Hold OK to mark watched", cardMenuHint(show))
     }
 
     @Test
