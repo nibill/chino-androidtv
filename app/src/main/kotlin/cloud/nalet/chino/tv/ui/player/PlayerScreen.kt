@@ -1175,14 +1175,20 @@ private fun ExoPlayback(
             placement.lift = subtitleLift
         }
     }
-    // What is on screen, laid out: a picture rises by its own bottom edge.
+    // What is on screen, laid out, and of which subtitle: a picture rises by
+    // its own bottom edge.
     DisposableEffect(player, subtitlePlacement.value) {
         val placement = subtitlePlacement.value
         val cues = object : Player.Listener {
             override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
                 placement?.cues = cueGroup.cues
             }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                placement?.subtitle(selectedSubtitle(tracks))
+            }
         }
+        placement?.subtitle(selectedSubtitle(player.currentTracks))
         placement?.cues = player.currentCues.cues
         player.addListener(cues)
         onDispose { player.removeListener(cues) }

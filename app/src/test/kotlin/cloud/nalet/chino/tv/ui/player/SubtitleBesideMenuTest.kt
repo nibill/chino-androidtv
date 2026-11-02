@@ -197,6 +197,42 @@ class SubtitleBesideMenuTest {
     }
 
     @Test
+    fun `a sign at the top of the frame never rises out of it, and another subtitle's rise is its own`() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val view = SubtitleView(context)
+        val placement = view.applySubtitleLook()
+        view.measure(View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY))
+        view.layout(0, 0, 1920, 1080)
+        val gap = SubtitleLook.ABOVE_CONTROLS_DP * context.resources.displayMetrics.density
+        placement.controlsTop = 800f
+        placement.lift = 1f
+        val pgs = androidx.media3.common.Format.Builder().setId("pgs").setSampleMimeType(androidx.media3.common.MimeTypes.APPLICATION_PGS).build()
+        val text = androidx.media3.common.Format.Builder().setId("vtt").setSampleMimeType(androidx.media3.common.MimeTypes.TEXT_VTT).build()
+        placement.subtitle(pgs)
+        // A sign from 60 px with a line ending at 1000 px: it rises 60 px, no more.
+        placement.cues = picture(600, 50, 660, 60) + picture(400, 40, 760, 960)
+        assertEquals(-60f, view.translationY, 0.5f)
+        // The line alone: by its bottom edge.
+        placement.cues = picture(400, 40, 760, 960)
+        assertEquals(-(1000f - (800f - gap)), view.translationY, 0.5f)
+        // A text subtitle comes on, nothing of it on screen yet: as a line of
+        // text rises, not by the pictures before it.
+        placement.cues = emptyList()
+        placement.subtitle(text)
+        assertEquals(-(placement.bottomFraction - resting(placement)) * 1080f, view.translationY, 0.5f)
+        assertEquals(800f - gap, 1080f - placement.bottomFraction * 1080f, 0.5f)
+    }
+
+    /** Where the line rests with the controls gone. */
+    private fun resting(placement: SubtitlePlacement): Float {
+        val lift = placement.lift
+        placement.lift = 0f
+        val rest = placement.bottomFraction
+        placement.lift = lift
+        return rest
+    }
+
+    @Test
     fun `an open menu says where its corner is, and that it is gone as it closes`() {
         val corners = mutableListOf<androidx.compose.ui.geometry.Offset?>()
         var open by mutableStateOf(true)
